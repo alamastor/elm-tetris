@@ -3,6 +3,7 @@ import Svg exposing (svg, rect)
 import Svg.Attributes exposing (x, y, width, height, stroke, fill)
 import AnimationFrame
 import Time exposing (Time)
+import Keyboard
 
 
 -- MAIN
@@ -81,6 +82,7 @@ init =
 type Msg
   = NoOp
   | FrameMsg Time
+  | KeyMsg Keyboard.KeyCode
 
 
 
@@ -97,11 +99,44 @@ update msg model =
         if Time.inSeconds timeSinceMove >= 1 / speed then
           ( model
             |> updateTimeSinceMove (Time.inSeconds timeSinceMove - 1 / speed)
-            |> updateShapeY 1
+            |> moveDown
           , Cmd.none
           )
         else
           ( model |> updateTimeSinceMove timeSinceMove, Cmd.none )
+    KeyMsg keyCode ->
+      if keyCode == 37 then
+        ( moveLeft model, Cmd.none )
+      else if keyCode == 39 then
+        ( model |> moveRight, Cmd.none )
+      else if keyCode == 40 then
+        ( model |> moveDown, Cmd.none )
+      else
+        ( model, Cmd.none )
+
+moveLeft : Model -> Model
+moveLeft model =
+  updateShapeX -1 model
+
+moveRight : Model -> Model
+moveRight model =
+  updateShapeX 1 model
+
+moveDown : Model -> Model
+moveDown model =
+  updateShapeY 1 model
+
+updateShapeX : Int -> Model -> Model
+updateShapeX change model =
+  { model | shape =
+    { position = updatePositionX change model.shape.position
+    , timeSinceMove = model.shape.timeSinceMove
+    }
+  }
+
+updatePositionX : Int -> Position -> Position
+updatePositionX change position =
+  { position | x = position.x + change}
 
 updateShapeY : Int -> Model -> Model
 updateShapeY change model =
@@ -131,6 +166,7 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
   Sub.batch
     [ AnimationFrame.diffs FrameMsg
+    , Keyboard.downs KeyMsg
     ]
 
 
