@@ -80,7 +80,7 @@ init =
 
 type Msg
   = NoOp
-  | TickMsg Time
+  | FrameMsg Time
 
 
 
@@ -91,7 +91,7 @@ update msg model =
   case msg of
     NoOp ->
       ( model, Cmd.none )
-    TickMsg diff ->
+    FrameMsg diff ->
       let timeSinceMove = model.shape.timeSinceMove + diff
       in
         if Time.inSeconds timeSinceMove >= 1 / speed then
@@ -129,7 +129,9 @@ updateTimeSinceMove timeSinceMove model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-  AnimationFrame.diffs TickMsg
+  Sub.batch
+    [ AnimationFrame.diffs FrameMsg
+    ]
 
 
 
