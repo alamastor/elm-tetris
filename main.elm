@@ -1,4 +1,6 @@
-import Html exposing (program, Html, div)
+import Html exposing (program, Html)
+import Svg exposing (svg, rect)
+import Svg.Attributes exposing (width, height, stroke, fill)
 
 -- MAIN
 
@@ -10,6 +12,30 @@ main =
     , update = update
     , subscriptions = subscriptions
     }
+
+
+
+-- BOARD
+
+pixelsPerUnit : Int
+pixelsPerUnit = 20
+
+type alias Unit = Int
+
+toSvgPix : Unit -> String
+toSvgPix units =
+  units * pixelsPerUnit |> toString
+
+type alias Rectangle =
+  { width: Unit
+  , height: Unit
+  }
+
+playArea : Rectangle
+playArea =
+  { width = 21
+  , height = 30
+  }
 
 
 
@@ -53,4 +79,6 @@ subscriptions model =
 
 view : Model -> Html Msg
 view model =
-  div [] []
+  svg [ toSvgPix playArea.width |> width, toSvgPix playArea.height |> height ]
+    [ rect [ toSvgPix playArea.width |> width, toSvgPix playArea.height |> height, stroke "black", fill "none" ] []
+    ]
