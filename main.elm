@@ -1,6 +1,9 @@
 import Html exposing (program, Html)
 import Svg exposing (svg, rect)
-import Svg.Attributes exposing (width, height, stroke, fill)
+import Svg.Attributes exposing (x, y, width, height, stroke, fill)
+import AnimationFrame
+import Time exposing (Time)
+
 
 -- MAIN
 
@@ -37,16 +40,39 @@ playArea =
   , height = 30
   }
 
+type alias Position =
+  { x: Unit
+  , y: Unit
+  }
+
+type alias UnitsPerSecond = Float
+
+speed : UnitsPerSecond
+speed = 2
+
 
 
 -- MODEL
 
 type alias Model =
-  {}
+  { shape :
+    { position: Position
+    , timeSinceMove: Time
+    }
+  }
 
 init : ( Model, Cmd Msg )
 init =
-  ( {}, Cmd.none )
+  ( { shape =
+      { position =
+        { x = 10
+        , y = 0
+        }
+      , timeSinceMove = 0
+      }
+    }
+  , Cmd.none
+  )
 
 
 
@@ -54,6 +80,7 @@ init =
 
 type Msg
   = NoOp
+  | TickMsg Time
 
 
 
@@ -64,6 +91,37 @@ update msg model =
   case msg of
     NoOp ->
       ( model, Cmd.none )
+    TickMsg diff ->
+      let timeSinceMove = model.shape.timeSinceMove + diff
+      in
+        if Time.inSeconds timeSinceMove >= 1 / speed then
+          ( model
+            |> updateTimeSinceMove (Time.inSeconds timeSinceMove - 1 / speed)
+            |> updateShapeY 1
+          , Cmd.none
+          )
+        else
+          ( model |> updateTimeSinceMove timeSinceMove, Cmd.none )
+
+updateShapeY : Int -> Model -> Model
+updateShapeY change model =
+  { model | shape =
+    { position = updatePositionY change model.shape.position
+    , timeSinceMove = model.shape.timeSinceMove
+    }
+  }
+
+updatePositionY : Int -> Position -> Position
+updatePositionY change position =
+  { position | y = position.y + change}
+
+updateTimeSinceMove : Time -> Model -> Model
+updateTimeSinceMove timeSinceMove model =
+  { model | shape =
+    { position = model.shape.position
+    , timeSinceMove = timeSinceMove
+    }
+  }
 
 
 
@@ -71,7 +129,7 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-  Sub.none
+  AnimationFrame.diffs TickMsg
 
 
 
@@ -81,4 +139,10 @@ view : Model -> Html Msg
 view model =
   svg [ toSvgPix playArea.width |> width, toSvgPix playArea.height |> height ]
     [ rect [ toSvgPix playArea.width |> width, toSvgPix playArea.height |> height, stroke "black", fill "none" ] []
+    , rect
+      [ toSvgPix model.shape.position.x |> x
+      , toSvgPix model.shape.position.y |> y
+      , toSvgPix 1 |> width
+      , toSvgPix 1 |> height
+      ] []
     ]
