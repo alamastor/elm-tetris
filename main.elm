@@ -80,10 +80,8 @@ init =
       }
     , placedShapes =
       False
-        |> Array.repeat (playArea.height - 1)
-        |> Array.push True
-        |> Array.repeat (playArea.width - 1)
-        |> Array.push (Array.repeat playArea.height True)
+        |> Array.repeat playArea.height
+        |> Array.repeat playArea.width
     }
   , Cmd.none
   )
@@ -144,7 +142,9 @@ moveRight model =
 moveDown : Model -> Model
 moveDown model =
   if collidesBelow model.shape model.placedShapes then
-    newShape model
+    model
+      |> addToPlacedShapes
+      |> newShape
   else
     updateShapeY 1 model
 
@@ -245,6 +245,23 @@ newShape model =
     , timeSinceMove = model.shape.timeSinceMove
     }
   }
+
+addToPlacedShapes : Model -> Model
+addToPlacedShapes model =
+  { model
+    | placedShapes = setPlaced model.shape.position model.placedShapes
+  }
+
+setPlaced : Position -> PlacedShapes -> PlacedShapes
+setPlaced position placedShapes =
+  let
+    column = Array.get position.x placedShapes
+  in
+    case column of
+      Nothing ->
+        placedShapes
+      Just column ->
+        Array.set position.x (Array.set position.y True column) placedShapes
 
 
 
