@@ -4,6 +4,7 @@ import Svg.Attributes exposing (x, y, width, height, stroke, fill)
 import AnimationFrame
 import Time exposing (Time)
 import Keyboard
+import Array exposing (Array)
 
 
 -- MAIN
@@ -51,15 +52,21 @@ type alias UnitsPerSecond = Float
 speed : UnitsPerSecond
 speed = 4
 
+type alias Shape =
+  { position: Position
+  , timeSinceMove: Time
+  }
+
+type alias PlacedShapes =
+  Array (Array Bool)
+
 
 
 -- MODEL
 
 type alias Model =
-  { shape :
-    { position: Position
-    , timeSinceMove: Time
-    }
+  { shape : Shape
+  , placedShapes: PlacedShapes
   }
 
 init : ( Model, Cmd Msg )
@@ -71,6 +78,12 @@ init =
         }
       , timeSinceMove = 0
       }
+    , placedShapes =
+      False
+        |> Array.repeat (playArea.height - 1)
+        |> Array.push True
+        |> Array.repeat (playArea.width - 1)
+        |> Array.push (Array.repeat playArea.height True)
     }
   , Cmd.none
   )
@@ -116,21 +129,21 @@ update msg model =
 
 moveLeft : Model -> Model
 moveLeft model =
-  if model |> collidesHoriz -1 then
+  if collidesLeft model.shape model.placedShapes then
     model
   else
     updateShapeX -1 model
 
 moveRight : Model -> Model
 moveRight model =
-  if model |> collidesHoriz 1 then
+  if collidesRight model.shape model.placedShapes then
     model
   else
     updateShapeX 1 model
 
 moveDown : Model -> Model
 moveDown model =
-  if model |> collidesBottom 1 then
+  if collidesBelow model.shape model.placedShapes then
     model
   else
     updateShapeY 1 model
@@ -167,21 +180,59 @@ updateTimeSinceMove timeSinceMove model =
     }
   }
 
-collidesBottom : Int -> Model -> Bool
-collidesBottom change model =
-  if model.shape.position.y + change >= playArea.height then
-    True
-  else
-    False
+collidesBelow : Shape -> PlacedShapes -> Bool
+collidesBelow shape placedShapes =
+  let
+    position = shape.position
+    belowPosition =
+      { position | y = shape.position.y + 1 }
+  in
+    if belowPosition.y >= playArea.height then
+      True
+    else if collidesPlaced belowPosition placedShapes then
+      True
+    else
+      False
 
-collidesHoriz : Int -> Model -> Bool
-collidesHoriz change model =
-  if model.shape.position.x + change < 0 then
-    True
-  else if model.shape.position.x + change >= playArea.width then
-    True
-  else
-    False
+collidesLeft : Shape -> PlacedShapes -> Bool
+collidesLeft shape placedShapes =
+  let
+    position = shape.position
+    leftPosition =
+      { position | x = shape.position.x - 1 }
+  in
+    if leftPosition.x < 0 then
+      True
+    else if collidesPlaced leftPosition placedShapes then
+      True
+    else
+      False
+
+collidesRight : Shape -> PlacedShapes -> Bool
+collidesRight shape placedShapes =
+  let
+    position = shape.position
+    rightPosition =
+      { position | x = shape.position.x + 1 }
+  in
+    if rightPosition.x < 0 then
+      True
+    else if collidesPlaced rightPosition placedShapes then
+      True
+    else
+      False
+
+getPlacedVal : Int -> Int -> PlacedShapes -> Bool
+getPlacedVal x y placedShapes =
+  placedShapes
+    |> Array.get x
+    |> Maybe.withDefault (False |> Array.repeat playArea.height)
+    |> Array.get y
+    |> Maybe.withDefault False
+
+collidesPlaced : Position -> PlacedShapes -> Bool
+collidesPlaced position placedShapes =
+  placedShapes |> getPlacedVal position.x position.y
 
 
 
