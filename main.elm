@@ -1,5 +1,5 @@
 import Html exposing (program, Html)
-import Svg exposing (svg, rect)
+import Svg exposing (Svg, svg, rect)
 import Svg.Attributes exposing (x, y, width, height, stroke, fill)
 import AnimationFrame
 import Time exposing (Time)
@@ -249,14 +249,38 @@ subscriptions model =
 
 -- VIEW
 
+placedShapesRects : PlacedShapes -> List (Svg Msg)
+placedShapesRects placedShapes =
+  placedShapes
+    |> Array.indexedMap getIndexPair
+    |> Array.toList
+    |> List.concat
+    |> List.map (\(xIdx, yIdx, isSet) -> (rect
+      [ toSvgPix xIdx |> x
+      , toSvgPix yIdx |> y
+      , toSvgPix 1 |> width
+      , toSvgPix 1 |> height
+      , stroke "grey"
+      , (\isSet -> if isSet then "green" else "none") isSet |> fill
+      ] []))
+
+
+
+getIndexPair : Int -> Array Bool -> List (Int, Int, Bool)
+getIndexPair xIdx array =
+  array
+    |> Array.indexedMap (\yIdx isSet -> (xIdx, yIdx, isSet))
+    |> Array.toList
+
 view : Model -> Html Msg
 view model =
   svg [ toSvgPix playArea.width |> width, toSvgPix playArea.height |> height ]
-    [ rect [ toSvgPix playArea.width |> width, toSvgPix playArea.height |> height, stroke "black", fill "none" ] []
-    , rect
-      [ toSvgPix model.shape.position.x |> x
-      , toSvgPix model.shape.position.y |> y
-      , toSvgPix 1 |> width
-      , toSvgPix 1 |> height
-      ] []
-    ]
+    ( List.append
+      [ rect [ toSvgPix playArea.width |> width, toSvgPix playArea.height |> height, stroke "black", fill "none" ] []
+      , rect
+        [ toSvgPix model.shape.position.x |> x
+        , toSvgPix model.shape.position.y |> y
+        , toSvgPix 1 |> width
+        , toSvgPix 1 |> height
+        ] []
+      ] ( placedShapesRects model.placedShapes ))
