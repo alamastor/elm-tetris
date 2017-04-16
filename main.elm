@@ -5,6 +5,7 @@ import AnimationFrame
 import Time exposing (Time)
 import Keyboard
 import Array exposing (Array)
+import Debug exposing (log)
 
 
 -- MAIN
@@ -54,6 +55,7 @@ speed = 4
 
 type alias Shape =
   { position: Position
+  , shapeName: ShapeName
   , timeSinceMove: Time
   }
 
@@ -61,6 +63,55 @@ type alias PlacedShapes =
   Array (Array Bool)
 
 
+
+-- SHAPES
+
+type ShapeName = Square | Line | L
+
+type alias Layout = List Position
+type alias LayoutSquare = ( LayoutOffset, LayoutOffset )
+type alias LayoutOffset = Int
+
+getLayout : Shape -> Layout
+getLayout shape =
+  case shape.shapeName of
+    Square ->
+      square shape.position
+    Line ->
+      line shape.position
+    L ->
+      line shape.position
+
+mapLayout : Position -> List ( Int, Int ) -> Layout
+mapLayout position coords =
+  coords |> List.map (\(x, y) -> { x= position.x + x, y = position.y + y })
+
+square : Position -> Layout
+square position =
+  [ ( 0, 0 )
+  , ( 1, 0 )
+  , ( 0, 1 )
+  , ( 1, 1 )
+  ]
+  |> mapLayout position
+
+line : Position -> Layout
+line position =
+  [ ( -1, 0 )
+  , ( 0, 0 )
+  , ( 1, 0 )
+  , ( 2, 0 )
+  ]
+  |> mapLayout position
+
+l : Position -> Layout
+l position =
+  [ ( 0, -1 )
+  , ( 0, 0 )
+  , ( 0, 1 )
+  , ( 1, 1 )
+  ]
+  |> mapLayout position
 
 -- MODEL
 
@@ -76,6 +127,7 @@ init =
         { x = 10
         , y = 0
         }
+      , shapeName = Square
       , timeSinceMove = 0
       }
     , placedShapes =
@@ -127,21 +179,21 @@ update msg model =
 
 moveLeft : Model -> Model
 moveLeft model =
-  if collidesLeft model.shape model.placedShapes then
+  if List.any ( collidesLeft model.placedShapes ) ( getLayout model.shape ) then
     model
   else
     updateShapeX -1 model
 
 moveRight : Model -> Model
 moveRight model =
-  if collidesRight model.shape model.placedShapes then
+  if List.any ( collidesRight model.placedShapes ) ( getLayout model.shape ) then
     model
   else
     updateShapeX 1 model
 
 moveDown : Model -> Model
 moveDown model =
-  if collidesBelow model.shape model.placedShapes then
+  if List.any ( collidesBelow model.placedShapes ) ( getLayout model.shape ) then
     model
       |> addToPlacedShapes
       |> newShape
@@ -152,6 +204,7 @@ updateShapeX : Int -> Model -> Model
 updateShapeX change model =
   { model | shape =
     { position = updatePositionX change model.shape.position
+    , shapeName = model.shape.shapeName
     , timeSinceMove = model.shape.timeSinceMove
     }
   }
@@ -164,6 +217,7 @@ updateShapeY : Int -> Model -> Model
 updateShapeY change model =
   { model | shape =
     { position = updatePositionY change model.shape.position
+    , shapeName = model.shape.shapeName
     , timeSinceMove = model.shape.timeSinceMove
     }
   }
@@ -176,16 +230,16 @@ updateTimeSinceMove : Time -> Model -> Model
 updateTimeSinceMove timeSinceMove model =
   { model | shape =
     { position = model.shape.position
+    , shapeName = model.shape.shapeName
     , timeSinceMove = timeSinceMove
     }
   }
 
-collidesBelow : Shape -> PlacedShapes -> Bool
-collidesBelow shape placedShapes =
+collidesBelow : PlacedShapes -> Position -> Bool
+collidesBelow placedShapes position =
   let
-    position = shape.position
     belowPosition =
-      { position | y = shape.position.y + 1 }
+      { position | y = position.y + 1 }
   in
     if belowPosition.y >= playArea.height then
       True
@@ -194,12 +248,11 @@ collidesBelow shape placedShapes =
     else
       False
 
-collidesLeft : Shape -> PlacedShapes -> Bool
-collidesLeft shape placedShapes =
+collidesLeft : PlacedShapes -> Position -> Bool
+collidesLeft placedShapes position =
   let
-    position = shape.position
     leftPosition =
-      { position | x = shape.position.x - 1 }
+      { position | x = position.x - 1 }
   in
     if leftPosition.x < 0 then
       True
@@ -208,14 +261,12 @@ collidesLeft shape placedShapes =
     else
       False
 
-collidesRight : Shape -> PlacedShapes -> Bool
-collidesRight shape placedShapes =
+collidesRight : PlacedShapes -> Position -> Bool
+collidesRight placedShapes position =
   let
-    position = shape.position
-    rightPosition =
-      { position | x = shape.position.x + 1 }
+    rightPosition = { position | x = position.x + 1 }
   in
-    if rightPosition.x < 0 then
+    if rightPosition.x >= playArea.width then
       True
     else if collidesPlaced rightPosition placedShapes then
       True
@@ -242,6 +293,7 @@ newShape model =
       { x = 10
       , y = 0
       }
+    , shapeName = model.shape.shapeName
     , timeSinceMove = model.shape.timeSinceMove
     }
   }
@@ -249,8 +301,12 @@ newShape model =
 addToPlacedShapes : Model -> Model
 addToPlacedShapes model =
   { model
-    | placedShapes = setPlaced model.shape.position model.placedShapes
+    | placedShapes = placeLayout model.shape model.placedShapes
   }
+
+placeLayout : Shape -> PlacedShapes -> PlacedShapes
+placeLayout shape placedShapes =
+  List.foldl setPlaced placedShapes (square shape.position)
 
 setPlaced : Position -> PlacedShapes -> PlacedShapes
 setPlaced position placedShapes =
@@ -278,7 +334,20 @@ subscriptions model =
 
 -- VIEW
 
-placedShapesRects : PlacedShapes -> List (Svg Msg)
+shapeRects : Shape -> List (Svg Msg)
+shapeRects shape =
+  List.map layoutRect (getLayout shape)
+
+layoutRect : Position -> Svg Msg
+layoutRect position =
+  rect
+    [ toSvgPix position.x |> Svg.Attributes.x
+    , toSvgPix position.y |> Svg.Attributes.y
+    , toSvgPix 1 |> width
+    , toSvgPix 1 |> height
+    ] []
+
+placedShapesRects : PlacedShapes -> List(Svg Msg)
 placedShapesRects placedShapes =
   placedShapes
     |> Array.indexedMap getIndexPair
@@ -304,12 +373,9 @@ getIndexPair xIdx array =
 view : Model -> Html Msg
 view model =
   svg [ toSvgPix playArea.width |> width, toSvgPix playArea.height |> height ]
-    ( List.append
-      [ rect [ toSvgPix playArea.width |> width, toSvgPix playArea.height |> height, stroke "black", fill "none" ] []
-      , rect
-        [ toSvgPix model.shape.position.x |> x
-        , toSvgPix model.shape.position.y |> y
-        , toSvgPix 1 |> width
-        , toSvgPix 1 |> height
-        ] []
-      ] ( placedShapesRects model.placedShapes ))
+    ( List.concat
+      [ [ rect [ toSvgPix playArea.width |> width, toSvgPix playArea.height |> height, stroke "black", fill "none" ] [] ]
+      , shapeRects model.shape
+      , ( placedShapesRects model.placedShapes )
+      ]
+    )
