@@ -144,7 +144,7 @@ moveRight model =
 moveDown : Model -> Model
 moveDown model =
   if collidesBelow model.shape model.placedShapes then
-    model
+    newShape model
   else
     updateShapeY 1 model
 
@@ -233,6 +233,18 @@ getPlacedVal x y placedShapes =
 collidesPlaced : Position -> PlacedShapes -> Bool
 collidesPlaced position placedShapes =
   placedShapes |> getPlacedVal position.x position.y
+
+
+newShape : Model -> Model
+newShape model =
+  { model | shape =
+    { position =
+      { x = 10
+      , y = 0
+      }
+    , timeSinceMove = model.shape.timeSinceMove
+    }
+  }
 
 
 
