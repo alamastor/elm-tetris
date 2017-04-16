@@ -49,7 +49,7 @@ type alias Position =
 type alias UnitsPerSecond = Float
 
 speed : UnitsPerSecond
-speed = 2
+speed = 4
 
 
 
@@ -116,15 +116,24 @@ update msg model =
 
 moveLeft : Model -> Model
 moveLeft model =
-  updateShapeX -1 model
+  if model |> collidesHoriz -1 then
+    model
+  else
+    updateShapeX -1 model
 
 moveRight : Model -> Model
 moveRight model =
-  updateShapeX 1 model
+  if model |> collidesHoriz 1 then
+    model
+  else
+    updateShapeX 1 model
 
 moveDown : Model -> Model
 moveDown model =
-  updateShapeY 1 model
+  if model |> collidesBottom 1 then
+    model
+  else
+    updateShapeY 1 model
 
 updateShapeX : Int -> Model -> Model
 updateShapeX change model =
@@ -157,6 +166,22 @@ updateTimeSinceMove timeSinceMove model =
     , timeSinceMove = timeSinceMove
     }
   }
+
+collidesBottom : Int -> Model -> Bool
+collidesBottom change model =
+  if model.shape.position.y + change >= playArea.height then
+    True
+  else
+    False
+
+collidesHoriz : Int -> Model -> Bool
+collidesHoriz change model =
+  if model.shape.position.x + change < 0 then
+    True
+  else if model.shape.position.x + change >= playArea.width then
+    True
+  else
+    False
 
 
 
