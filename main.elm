@@ -6,6 +6,8 @@ import Time exposing (Time)
 import Keyboard
 import Array exposing (Array)
 import Array.Extra
+import Random
+import Random.Extra
 
 
 -- MAIN
@@ -86,7 +88,7 @@ getLayout shape =
     Line ->
       line shape.position
     L ->
-      line shape.position
+      l shape.position
 
 mapLayout : Position -> List ( Int, Int ) -> Layout
 mapLayout position coords =
@@ -138,7 +140,7 @@ init =
         |> Array.repeat playArea.height
         |> Array.repeat playArea.width
     }
-  , Cmd.none
+  , randomShape
   )
 
 
@@ -149,6 +151,7 @@ type Msg
   = NoOp
   | FrameMsg Time
   | KeyMsg Keyboard.KeyCode
+  | UpdateLayout ShapeName
 
 
 
@@ -163,46 +166,59 @@ update msg model =
       let timeSinceMove = model.shape.timeSinceMove + diff
       in
         if Time.inSeconds timeSinceMove >= 1 / speed then
-          ( model
+          model
             |> updateTimeSinceMove (Time.inSeconds timeSinceMove - 1 / speed)
             |> moveDown
-          , Cmd.none
-          )
         else
           ( model |> updateTimeSinceMove timeSinceMove, Cmd.none )
     KeyMsg keyCode ->
       if keyCode == 37 then
-        ( moveLeft model, Cmd.none )
+        moveLeft model
       else if keyCode == 39 then
-        ( model |> moveRight, Cmd.none )
+        moveRight model
       else if keyCode == 40 then
-        ( model |> moveDown, Cmd.none )
+        moveDown model
       else
         ( model, Cmd.none )
+    UpdateLayout shapeName ->
+      ( { model | shape =
+        { position = model.shape.position
+        , shapeName = shapeName
+        , timeSinceMove = model.shape.timeSinceMove
+        }
+      }, Cmd.none )
 
-moveLeft : Model -> Model
+randomShape : Cmd Msg
+randomShape =
+  Random.Extra.sample [Square, Line, L]
+    |> Random.map (Maybe.withDefault Square)
+    |> Random.generate UpdateLayout 
+
+moveLeft : Model -> ( Model, Cmd Msg )
 moveLeft model =
   if List.any ( collidesLeft model.placedShapes ) ( getLayout model.shape ) then
-    model
+    ( model, Cmd.none )
   else
-    updateShapeX -1 model
+    ( updateShapeX -1 model, Cmd.none )
 
-moveRight : Model -> Model
+moveRight : Model -> ( Model, Cmd Msg )
 moveRight model =
   if List.any ( collidesRight model.placedShapes ) ( getLayout model.shape ) then
-    model
+    ( model, Cmd.none )
   else
-    updateShapeX 1 model
+    ( updateShapeX 1 model, Cmd.none )
 
-moveDown : Model -> Model
+moveDown : Model -> ( Model, Cmd Msg )
 moveDown model =
   if List.any ( collidesBelow model.placedShapes ) ( getLayout model.shape ) then
-    model
+    ( model
       |> addToPlacedShapes
       |> newShape
       |> clearFullRows
+    , randomShape
+    )
   else
-    updateShapeY 1 model
+    ( updateShapeY 1 model, Cmd.none )
 
 updateShapeX : Int -> Model -> Model
 updateShapeX change model =
@@ -289,7 +305,6 @@ collidesPlaced : Position -> PlacedShapes -> Bool
 collidesPlaced position placedShapes =
   placedShapes |> getPlacedVal position.x position.y
 
-
 newShape : Model -> Model
 newShape model =
   { model | shape =
@@ -307,7 +322,7 @@ addToPlacedShapes model =
 
 placeLayout : Shape -> PlacedShapes -> PlacedShapes
 placeLayout shape placedShapes =
-  List.foldl (setPlaced True) placedShapes (square shape.position)
+  List.foldl (setPlaced True) placedShapes (getLayout shape)
 
 setPlaced : Bool -> Position -> PlacedShapes -> PlacedShapes
 setPlaced isSet position placedShapes =
