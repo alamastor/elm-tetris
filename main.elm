@@ -64,6 +64,7 @@ speed = 7
 type alias Shape =
   { position: Position
   , shapeName: ShapeName
+  , rotation: Rotation
   , timeSinceMove: Time
   }
 
@@ -75,6 +76,7 @@ type alias PlacedShapes =
 -- SHAPES
 
 type ShapeName = Square | Line | L
+type Rotation = Zero | Ninty | OneEighty | TwoSeventy
 
 type alias Layout = List Position
 type alias LayoutSquare = ( LayoutOffset, LayoutOffset )
@@ -84,42 +86,62 @@ getLayout : Shape -> Layout
 getLayout shape =
   case shape.shapeName of
     Square ->
-      square shape.position
+      square shape
     Line ->
-      line shape.position
+      line shape
     L ->
-      l shape.position
+      l shape
 
-mapLayout : Position -> List ( Int, Int ) -> Layout
-mapLayout position coords =
-  coords |> List.map (\(x, y) -> { x= position.x + x, y = position.y + y })
+mapLayout : Shape -> List ( Int, Int ) -> Layout
+mapLayout shape coords =
+  coords
+    |> rotateLayout shape.rotation
+    |> List.map (\(x, y) -> (shape.position.x + x, shape.position.y + y ))
+    |> coordTuplesToLayout
 
-square : Position -> Layout
-square position =
+rotateLayout : Rotation -> List ( Int, Int ) -> List ( Int, Int )
+rotateLayout rotation coords =
+  case rotation of
+    Zero ->
+      List.map (\(x, y) -> (x, y)) coords
+    Ninty ->
+      List.map (\(x, y) -> (-y, x)) coords
+    OneEighty ->
+      List.map (\(x, y) -> (-x, -y)) coords
+    TwoSeventy ->
+      List.map (\(x, y) -> (y, -x)) coords
+
+coordTuplesToLayout : List ( Int, Int ) -> Layout
+coordTuplesToLayout coords =
+  coords
+    |> List.map (\(x, y) -> { x = x, y = y })
+
+square : Shape -> Layout
+square shape =
   [ ( 0, 0 )
   , ( 1, 0 )
   , ( 0, 1 )
   , ( 1, 1 )
   ]
-  |> mapLayout position
+  |> mapLayout shape
 
-line : Position -> Layout
-line position =
+line : Shape -> Layout
+line shape =
   [ ( -1, 0 )
   , ( 0, 0 )
   , ( 1, 0 )
   , ( 2, 0 )
   ]
-  |> mapLayout position
+  |> mapLayout shape
 
-l : Position -> Layout
-l position =
+l : Shape -> Layout
+l shape =
   [ ( 0, -1 )
   , ( 0, 0 )
   , ( 0, 1 )
   , ( 1, 1 )
   ]
-  |> mapLayout position
+  |> mapLayout shape
 
 -- MODEL
 
@@ -133,6 +155,7 @@ init =
   ( { shape =
       { position = startPosition
       , shapeName = Square
+      , rotation = Zero
       , timeSinceMove = 0
       }
     , placedShapes =
@@ -174,6 +197,8 @@ update msg model =
     KeyMsg keyCode ->
       if keyCode == 37 then
         moveLeft model
+      else if keyCode == 38 then
+        rotateShape model
       else if keyCode == 39 then
         moveRight model
       else if keyCode == 40 then
@@ -184,6 +209,7 @@ update msg model =
       ( { model | shape =
         { position = model.shape.position
         , shapeName = shapeName
+        , rotation = model.shape.rotation
         , timeSinceMove = model.shape.timeSinceMove
         }
       }, Cmd.none )
@@ -192,7 +218,30 @@ randomShape : Cmd Msg
 randomShape =
   Random.Extra.sample [Square, Line, L]
     |> Random.map (Maybe.withDefault Square)
-    |> Random.generate UpdateLayout 
+    |> Random.generate UpdateLayout
+
+rotateShape : Model -> ( Model, Cmd Msg )
+rotateShape model =
+  case model.shape.rotation of
+    Zero ->
+      ( setRotation Ninty model, Cmd.none )
+    Ninty ->
+      ( setRotation OneEighty model, Cmd.none )
+    OneEighty ->
+      ( setRotation TwoSeventy model, Cmd.none )
+    TwoSeventy ->
+      ( setRotation Zero model, Cmd.none )
+
+setRotation : Rotation -> Model -> Model
+setRotation rotation model =
+  { model
+    | shape =
+    { position = model.shape.position
+    , shapeName = model.shape.shapeName
+    , rotation = rotation
+    , timeSinceMove = model.shape.timeSinceMove
+    }
+  }
 
 moveLeft : Model -> ( Model, Cmd Msg )
 moveLeft model =
@@ -225,6 +274,7 @@ updateShapeX change model =
   { model | shape =
     { position = updatePositionX change model.shape.position
     , shapeName = model.shape.shapeName
+    , rotation = model.shape.rotation
     , timeSinceMove = model.shape.timeSinceMove
     }
   }
@@ -238,6 +288,7 @@ updateShapeY change model =
   { model | shape =
     { position = updatePositionY change model.shape.position
     , shapeName = model.shape.shapeName
+    , rotation = model.shape.rotation
     , timeSinceMove = model.shape.timeSinceMove
     }
   }
@@ -251,6 +302,7 @@ updateTimeSinceMove timeSinceMove model =
   { model | shape =
     { position = model.shape.position
     , shapeName = model.shape.shapeName
+    , rotation = model.shape.rotation
     , timeSinceMove = timeSinceMove
     }
   }
@@ -310,6 +362,7 @@ newShape model =
   { model | shape =
     { position = startPosition
     , shapeName = model.shape.shapeName
+    , rotation = model.shape.rotation
     , timeSinceMove = model.shape.timeSinceMove
     }
   }
