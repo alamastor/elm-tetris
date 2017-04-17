@@ -5,7 +5,7 @@ import AnimationFrame
 import Time exposing (Time)
 import Keyboard
 import Array exposing (Array)
-import Debug exposing (log)
+import Array.Extra
 
 
 -- MAIN
@@ -48,10 +48,16 @@ type alias Position =
   , y: Unit
   }
 
+startPosition : Position
+startPosition =
+  { x = 10
+  , y = 0
+  }
+
 type alias UnitsPerSecond = Float
 
 speed : UnitsPerSecond
-speed = 4
+speed = 7
 
 type alias Shape =
   { position: Position
@@ -123,10 +129,7 @@ type alias Model =
 init : ( Model, Cmd Msg )
 init =
   ( { shape =
-      { position =
-        { x = 10
-        , y = 0
-        }
+      { position = startPosition
       , shapeName = Square
       , timeSinceMove = 0
       }
@@ -197,6 +200,7 @@ moveDown model =
     model
       |> addToPlacedShapes
       |> newShape
+      |> clearFullRows
   else
     updateShapeY 1 model
 
@@ -289,10 +293,7 @@ collidesPlaced position placedShapes =
 newShape : Model -> Model
 newShape model =
   { model | shape =
-    { position =
-      { x = 10
-      , y = 0
-      }
+    { position = startPosition
     , shapeName = model.shape.shapeName
     , timeSinceMove = model.shape.timeSinceMove
     }
@@ -306,10 +307,10 @@ addToPlacedShapes model =
 
 placeLayout : Shape -> PlacedShapes -> PlacedShapes
 placeLayout shape placedShapes =
-  List.foldl setPlaced placedShapes (square shape.position)
+  List.foldl (setPlaced True) placedShapes (square shape.position)
 
-setPlaced : Position -> PlacedShapes -> PlacedShapes
-setPlaced position placedShapes =
+setPlaced : Bool -> Position -> PlacedShapes -> PlacedShapes
+setPlaced isSet position placedShapes =
   let
     column = Array.get position.x placedShapes
   in
@@ -317,7 +318,42 @@ setPlaced position placedShapes =
       Nothing ->
         placedShapes
       Just column ->
-        Array.set position.x (Array.set position.y True column) placedShapes
+        Array.set position.x (Array.set position.y isSet column) placedShapes
+
+clearFullRows : Model -> Model
+clearFullRows model =
+  let
+    placedShapes = model.placedShapes
+    completedRows = getCompletedRows placedShapes
+  in
+    { model
+      | placedShapes = Array.indexedMap (\x col -> (Array.indexedMap (\y _ -> clearIfRowComplete x y completedRows placedShapes ) col)) placedShapes
+    }
+
+getCompletedRows : PlacedShapes -> Array (Bool)
+getCompletedRows placedShapes =
+  let
+    fullCol = Array.repeat playArea.height True
+  in
+    Array.foldl (\col prevCol -> bothTrue col prevCol ) fullCol placedShapes
+
+clearIfRowComplete : Int -> Int -> Array Bool -> PlacedShapes -> Bool
+clearIfRowComplete x y completedRows placedShapes =
+  let
+    rowCompleted = Maybe.withDefault False (Array.get y completedRows)
+  in
+    if rowCompleted then
+      False
+    else
+      placedShapes
+        |> Array.get x
+        |> Maybe.withDefault (Array.repeat playArea.height False)
+        |> Array.get y
+        |> Maybe.withDefault False
+
+bothTrue : Array Bool -> Array Bool -> Array Bool
+bothTrue array1 array2 =
+  Array.Extra.map2 (&&) array1 array2
 
 
 
@@ -361,8 +397,6 @@ placedShapesRects placedShapes =
       , stroke "grey"
       , (\isSet -> if isSet then "green" else "none") isSet |> fill
       ] []))
-
-
 
 getIndexPair : Int -> Array Bool -> List (Int, Int, Bool)
 getIndexPair xIdx array =
