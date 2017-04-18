@@ -1,13 +1,25 @@
-import Html exposing (program, Html)
-import Svg exposing (Svg, svg, rect)
-import Svg.Attributes exposing (x, y, width, height, stroke, fill)
 import AnimationFrame
 import Time exposing (Time)
 import Keyboard
 import Array exposing (Array)
 import Array.Extra
-import Random
-import Random.Extra
+import Html exposing (program)
+
+import View exposing (view)
+import Messages exposing (Msg(NoOp, FrameMsg, KeyMsg, UpdateLayout))
+import Model exposing
+  ( Model
+  , ShapeName(Square)
+  , Rotation(Zero, Ninty, OneEighty, TwoSeventy)
+  , PlacedShapes
+  , Position
+  , Shape
+  , getLayout
+  , startPosition
+  , speed
+  , playArea
+  )
+import Commands
 
 
 -- MAIN
@@ -20,135 +32,6 @@ main =
     , update = update
     , subscriptions = subscriptions
     }
-
-
-
--- BOARD
-
-pixelsPerUnit : Int
-pixelsPerUnit = 30
-
-type alias Unit = Int
-
-toSvgPix : Unit -> String
-toSvgPix units =
-  units * pixelsPerUnit |> toString
-
-type alias Rectangle =
-  { width: Unit
-  , height: Unit
-  }
-
-playArea : Rectangle
-playArea =
-  { width = 13
-  , height = 25
-  }
-
-type alias Position =
-  { x: Unit
-  , y: Unit
-  }
-
-startPosition : Position
-startPosition =
-  { x = 6
-  , y = 0
-  }
-
-type alias UnitsPerSecond = Float
-
-speed : UnitsPerSecond
-speed = 7
-
-type alias Shape =
-  { position: Position
-  , shapeName: ShapeName
-  , rotation: Rotation
-  , timeSinceMove: Time
-  }
-
-type alias PlacedShapes =
-  Array (Array Bool)
-
-
-
--- SHAPES
-
-type ShapeName = Square | Line | L
-type Rotation = Zero | Ninty | OneEighty | TwoSeventy
-
-type alias Layout = List Position
-type alias LayoutSquare = ( LayoutOffset, LayoutOffset )
-type alias LayoutOffset = Int
-
-getLayout : Shape -> Layout
-getLayout shape =
-  case shape.shapeName of
-    Square ->
-      square shape
-    Line ->
-      line shape
-    L ->
-      l shape
-
-mapLayout : Shape -> List ( Int, Int ) -> Layout
-mapLayout shape coords =
-  coords
-    |> rotateLayout shape.rotation
-    |> List.map (\(x, y) -> (shape.position.x + x, shape.position.y + y ))
-    |> coordTuplesToLayout
-
-rotateLayout : Rotation -> List ( Int, Int ) -> List ( Int, Int )
-rotateLayout rotation coords =
-  case rotation of
-    Zero ->
-      List.map (\(x, y) -> (x, y)) coords
-    Ninty ->
-      List.map (\(x, y) -> (-y, x)) coords
-    OneEighty ->
-      List.map (\(x, y) -> (-x, -y)) coords
-    TwoSeventy ->
-      List.map (\(x, y) -> (y, -x)) coords
-
-coordTuplesToLayout : List ( Int, Int ) -> Layout
-coordTuplesToLayout coords =
-  coords
-    |> List.map (\(x, y) -> { x = x, y = y })
-
-square : Shape -> Layout
-square shape =
-  [ ( 0, 0 )
-  , ( 1, 0 )
-  , ( 0, 1 )
-  , ( 1, 1 )
-  ]
-  |> mapLayout shape
-
-line : Shape -> Layout
-line shape =
-  [ ( -1, 0 )
-  , ( 0, 0 )
-  , ( 1, 0 )
-  , ( 2, 0 )
-  ]
-  |> mapLayout shape
-
-l : Shape -> Layout
-l shape =
-  [ ( 0, -1 )
-  , ( 0, 0 )
-  , ( 0, 1 )
-  , ( 1, 1 )
-  ]
-  |> mapLayout shape
-
--- MODEL
-
-type alias Model =
-  { shape : Shape
-  , placedShapes: PlacedShapes
-  }
 
 init : ( Model, Cmd Msg )
 init =
@@ -163,19 +46,8 @@ init =
         |> Array.repeat playArea.height
         |> Array.repeat playArea.width
     }
-  , randomShape
+  , Commands.randomShape
   )
-
-
-
--- MESSAGES
-
-type Msg
-  = NoOp
-  | FrameMsg Time
-  | KeyMsg Keyboard.KeyCode
-  | UpdateLayout ShapeName
-
 
 
 -- UPDATE
@@ -213,12 +85,6 @@ update msg model =
         , timeSinceMove = model.shape.timeSinceMove
         }
       }, Cmd.none )
-
-randomShape : Cmd Msg
-randomShape =
-  Random.Extra.sample [Square, Line, L]
-    |> Random.map (Maybe.withDefault Square)
-    |> Random.generate UpdateLayout
 
 rotateShape : Model -> ( Model, Cmd Msg )
 rotateShape model =
@@ -264,7 +130,7 @@ moveDown model =
       |> addToPlacedShapes
       |> newShape
       |> clearFullRows
-    , randomShape
+    , Commands.randomShape
     )
   else
     ( updateShapeY 1 model, Cmd.none )
@@ -433,51 +299,3 @@ subscriptions model =
     [ AnimationFrame.diffs FrameMsg
     , Keyboard.downs KeyMsg
     ]
-
-
-
--- VIEW
-
-shapeRects : Shape -> List (Svg Msg)
-shapeRects shape =
-  List.map layoutRect (getLayout shape)
-
-layoutRect : Position -> Svg Msg
-layoutRect position =
-  rect
-    [ toSvgPix position.x |> Svg.Attributes.x
-    , toSvgPix position.y |> Svg.Attributes.y
-    , toSvgPix 1 |> width
-    , toSvgPix 1 |> height
-    ] []
-
-placedShapesRects : PlacedShapes -> List(Svg Msg)
-placedShapesRects placedShapes =
-  placedShapes
-    |> Array.indexedMap getIndexPair
-    |> Array.toList
-    |> List.concat
-    |> List.map (\(xIdx, yIdx, isSet) -> (rect
-      [ toSvgPix xIdx |> x
-      , toSvgPix yIdx |> y
-      , toSvgPix 1 |> width
-      , toSvgPix 1 |> height
-      , stroke "grey"
-      , (\isSet -> if isSet then "green" else "none") isSet |> fill
-      ] []))
-
-getIndexPair : Int -> Array Bool -> List (Int, Int, Bool)
-getIndexPair xIdx array =
-  array
-    |> Array.indexedMap (\yIdx isSet -> (xIdx, yIdx, isSet))
-    |> Array.toList
-
-view : Model -> Html Msg
-view model =
-  svg [ toSvgPix playArea.width |> width, toSvgPix playArea.height |> height ]
-    ( List.concat
-      [ [ rect [ toSvgPix playArea.width |> width, toSvgPix playArea.height |> height, stroke "black", fill "none" ] [] ]
-      , shapeRects model.shape
-      , ( placedShapesRects model.placedShapes )
-      ]
-    )
