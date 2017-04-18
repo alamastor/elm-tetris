@@ -26,7 +26,7 @@ main =
 -- BOARD
 
 pixelsPerUnit : Int
-pixelsPerUnit = 20
+pixelsPerUnit = 30
 
 type alias Unit = Int
 
@@ -41,8 +41,8 @@ type alias Rectangle =
 
 playArea : Rectangle
 playArea =
-  { width = 21
-  , height = 30
+  { width = 13
+  , height = 25
   }
 
 type alias Position =
@@ -52,7 +52,7 @@ type alias Position =
 
 startPosition : Position
 startPosition =
-  { x = 10
+  { x = 6
   , y = 0
   }
 
