@@ -395,29 +395,29 @@ clearFullRows model =
     completedRows = getCompletedRows placedShapes
   in
     { model
-      | placedShapes = Array.indexedMap (\x col -> (Array.indexedMap (\y _ -> clearIfRowComplete x y completedRows placedShapes ) col)) placedShapes
+      | placedShapes = Array.map (\col -> clearIfRowComplete completedRows col) placedShapes
     }
 
-getCompletedRows : PlacedShapes -> Array (Bool)
+getCompletedRows : PlacedShapes -> Array Bool
 getCompletedRows placedShapes =
   let
     fullCol = Array.repeat playArea.height True
   in
     Array.foldl (\col prevCol -> bothTrue col prevCol ) fullCol placedShapes
 
-clearIfRowComplete : Int -> Int -> Array Bool -> PlacedShapes -> Bool
-clearIfRowComplete x y completedRows placedShapes =
-  let
-    rowCompleted = Maybe.withDefault False (Array.get y completedRows)
-  in
-    if rowCompleted then
-      False
-    else
-      placedShapes
-        |> Array.get x
-        |> Maybe.withDefault (Array.repeat playArea.height False)
-        |> Array.get y
-        |> Maybe.withDefault False
+clearIfRowComplete : Array Bool -> Array Bool -> Array Bool
+clearIfRowComplete completedRows col =
+  col
+    |> Array.indexedMap (\y isSet -> (y, isSet))
+    |> Array.Extra.removeWhen (\(y, isSet) -> rowIsComplete y completedRows)
+    |> Array.map (\(_, isSet) -> isSet)
+    |> Array.Extra.resizerRepeat playArea.height False
+
+rowIsComplete : Int -> Array Bool -> Bool
+rowIsComplete y completedRows =
+  completedRows
+    |> Array.get y
+    |> Maybe.withDefault False
 
 bothTrue : Array Bool -> Array Bool -> Array Bool
 bothTrue array1 array2 =
