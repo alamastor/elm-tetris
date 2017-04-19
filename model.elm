@@ -73,6 +73,7 @@ type ShapeName = Square | Line | L
 type Rotation = Zero | Ninty | OneEighty | TwoSeventy
 
 type alias Layout = List Position
+
 type alias LayoutSquare = ( LayoutOffset, LayoutOffset )
 type alias LayoutOffset = Int
 
@@ -80,18 +81,23 @@ getLayout : Shape -> Layout
 getLayout shape =
   case shape.shapeName of
     Square ->
-      square shape
+      mapLayout square shape
     Line ->
-      line shape
+      mapLayout line shape
     L ->
-      l shape
+      mapLayout l shape
 
-mapLayout : Shape -> List ( Int, Int ) -> Layout
-mapLayout shape coords =
-  coords
-    |> rotateLayout shape.rotation
-    |> List.map (\(x, y) -> (shape.position.x + x, shape.position.y + y ))
-    |> coordTuplesToLayout
+mapLayout : ShapeMap -> Shape -> Layout
+mapLayout shapeMap shape =
+  if shapeMap.rotates then
+    shapeMap.layout
+      |> rotateLayout shape.rotation
+      |> List.map (\(x, y) -> (shape.position.x + x, shape.position.y + y ))
+      |> coordTuplesToLayout
+  else
+    shapeMap.layout
+      |> List.map (\(x, y) -> (shape.position.x + x, shape.position.y + y ))
+      |> coordTuplesToLayout
 
 rotateLayout : Rotation -> List ( Int, Int ) -> List ( Int, Int )
 rotateLayout rotation coords =
@@ -105,34 +111,46 @@ rotateLayout rotation coords =
     TwoSeventy ->
       List.map (\(x, y) -> (y, -x)) coords
 
-coordTuplesToLayout : List ( Int, Int ) -> Layout
+coordTuplesToLayout : List ( Int, Int ) -> List Position
 coordTuplesToLayout coords =
   coords
     |> List.map (\(x, y) -> { x = x, y = y })
 
-square : Shape -> Layout
-square shape =
-  [ ( 0, 0 )
-  , ( 1, 0 )
-  , ( 0, 1 )
-  , ( 1, 1 )
-  ]
-  |> mapLayout shape
 
-line : Shape -> Layout
-line shape =
-  [ ( -1, 0 )
-  , ( 0, 0 )
-  , ( 1, 0 )
-  , ( 2, 0 )
-  ]
-  |> mapLayout shape
+type alias ShapeMap =
+  { layout: List ( Int, Int )
+  , rotates: Bool
+  }
 
-l : Shape -> Layout
-l shape =
-  [ ( 0, -1 )
-  , ( 0, 0 )
-  , ( 0, 1 )
-  , ( 1, 1 )
-  ]
-  |> mapLayout shape
+square : ShapeMap
+square =
+  { layout =
+    [ ( 0, 0 )
+    , ( 1, 0 )
+    , ( 0, 1 )
+    , ( 1, 1 )
+    ]
+  , rotates = False
+  }
+
+line : ShapeMap
+line =
+  { layout =
+    [ ( -1, 0 )
+    , ( 0, 0 )
+    , ( 1, 0 )
+    , ( 2, 0 )
+    ]
+  , rotates = True
+  }
+
+l : ShapeMap
+l =
+  { layout =
+    [ ( 0, -1 )
+    , ( 0, 0 )
+    , ( 0, 1 )
+    , ( 1, 1 )
+    ]
+  , rotates = True
+  }
