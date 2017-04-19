@@ -11,17 +11,27 @@ module Model exposing
   , toSvgPix
   , getLayout
   , speed
+  , tryRotate
+  , updateTimeSinceMove
+  , collidesLeft
+  , collidesRight
+  , collidesBelow
+  , updateShapeX
+  , updateShapeY
+  , addToPlacedShapes
+  , newShape
+  , clearFullRows
   )
 
 import Time exposing (Time)
 import Array exposing (Array)
+import Array.Extra
 
 
 type alias Model =
   { shape : Shape
   , placedShapes: PlacedShapes
   }
-
 
 pixelsPerUnit : Int
 pixelsPerUnit = 30
@@ -154,3 +164,191 @@ l =
     ]
   , rotates = True
   }
+
+setRotation : Rotation -> Model -> Model
+setRotation rotation model =
+  { model
+    | shape =
+    { position = model.shape.position
+    , shapeName = model.shape.shapeName
+    , rotation = rotation
+    , timeSinceMove = model.shape.timeSinceMove
+    }
+  }
+
+updateShapeX : Int -> Model -> Model
+updateShapeX change model =
+  { model | shape =
+    { position = updatePositionX change model.shape.position
+    , shapeName = model.shape.shapeName
+    , rotation = model.shape.rotation
+    , timeSinceMove = model.shape.timeSinceMove
+    }
+  }
+
+updatePositionX : Int -> Position -> Position
+updatePositionX change position =
+  { position | x = position.x + change}
+
+updateShapeY : Int -> Model -> Model
+updateShapeY change model =
+  { model | shape =
+    { position = updatePositionY change model.shape.position
+    , shapeName = model.shape.shapeName
+    , rotation = model.shape.rotation
+    , timeSinceMove = model.shape.timeSinceMove
+    }
+  }
+
+updatePositionY : Int -> Position -> Position
+updatePositionY change position =
+  { position | y = position.y + change}
+
+updateTimeSinceMove : Time -> Model -> Model
+updateTimeSinceMove timeSinceMove model =
+  { model | shape =
+    { position = model.shape.position
+    , shapeName = model.shape.shapeName
+    , rotation = model.shape.rotation
+    , timeSinceMove = timeSinceMove
+    }
+  }
+
+collidesBelow : PlacedShapes -> Position -> Bool
+collidesBelow placedShapes position =
+  let
+    belowPosition =
+      { position | y = position.y + 1 }
+  in
+    if belowPosition.y >= playArea.height then
+      True
+    else if collidesPlaced belowPosition placedShapes then
+      True
+    else
+      False
+
+collidesLeft : PlacedShapes -> Position -> Bool
+collidesLeft placedShapes position =
+  let
+    leftPosition =
+      { position | x = position.x - 1 }
+  in
+    if leftPosition.x < 0 then
+      True
+    else if collidesPlaced leftPosition placedShapes then
+      True
+    else
+      False
+
+collidesRight : PlacedShapes -> Position -> Bool
+collidesRight placedShapes position =
+  let
+    rightPosition = { position | x = position.x + 1 }
+  in
+    if rightPosition.x >= playArea.width then
+      True
+    else if collidesPlaced rightPosition placedShapes then
+      True
+    else
+      False
+
+getPlacedVal : Int -> Int -> PlacedShapes -> Bool
+getPlacedVal x y placedShapes =
+  placedShapes
+    |> Array.get x
+    |> Maybe.withDefault (False |> Array.repeat playArea.height)
+    |> Array.get y
+    |> Maybe.withDefault False
+
+collidesPlaced : Position -> PlacedShapes -> Bool
+collidesPlaced position placedShapes =
+  placedShapes |> getPlacedVal position.x position.y
+
+newShape : Model -> Model
+newShape model =
+  { model | shape =
+    { position = startPosition
+    , shapeName = model.shape.shapeName
+    , rotation = model.shape.rotation
+    , timeSinceMove = model.shape.timeSinceMove
+    }
+  }
+
+addToPlacedShapes : Model -> Model
+addToPlacedShapes model =
+  { model
+    | placedShapes = placeLayout model.shape model.placedShapes
+  }
+
+placeLayout : Shape -> PlacedShapes -> PlacedShapes
+placeLayout shape placedShapes =
+  List.foldl (setPlaced True) placedShapes (getLayout shape)
+
+setPlaced : Bool -> Position -> PlacedShapes -> PlacedShapes
+setPlaced isSet position placedShapes =
+  let
+    column = Array.get position.x placedShapes
+  in
+    case column of
+      Nothing ->
+        placedShapes
+      Just column ->
+        Array.set position.x (Array.set position.y isSet column) placedShapes
+
+clearFullRows : Model -> Model
+clearFullRows model =
+  let
+    placedShapes = model.placedShapes
+    completedRows = getCompletedRows placedShapes
+  in
+    { model
+      | placedShapes = Array.map (\col -> clearIfRowComplete completedRows col) placedShapes
+    }
+
+getCompletedRows : PlacedShapes -> Array Bool
+getCompletedRows placedShapes =
+  let
+    fullCol = Array.repeat playArea.height True
+  in
+    Array.foldl (\col prevCol -> bothTrue col prevCol ) fullCol placedShapes
+
+clearIfRowComplete : Array Bool -> Array Bool -> Array Bool
+clearIfRowComplete completedRows col =
+  col
+    |> Array.indexedMap (\y isSet -> (y, isSet))
+    |> Array.Extra.removeWhen (\(y, isSet) -> rowIsComplete y completedRows)
+    |> Array.map (\(_, isSet) -> isSet)
+    |> Array.Extra.resizerRepeat playArea.height False
+
+rowIsComplete : Int -> Array Bool -> Bool
+rowIsComplete y completedRows =
+  completedRows
+    |> Array.get y
+    |> Maybe.withDefault False
+
+bothTrue : Array Bool -> Array Bool -> Array Bool
+bothTrue array1 array2 =
+  Array.Extra.map2 (&&) array1 array2
+
+tryRotate : Rotation -> Model -> Model
+tryRotate rotation model =
+  let
+    rotated = setRotation rotation model
+    isOutOfBounds = List.any outOfBounds ( getLayout rotated.shape )
+  in
+    if isOutOfBounds then
+      model
+    else
+      rotated
+
+outOfBounds : Position -> Bool
+outOfBounds position =
+  if
+    position.x < 0 ||
+    position.x >= playArea.width ||
+    position.y >= playArea.height
+  then
+    True
+  else
+    False
+
