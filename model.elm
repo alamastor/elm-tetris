@@ -26,6 +26,7 @@ module Model exposing
 import Time exposing (Time)
 import Array exposing (Array)
 import Array.Extra
+import Debug exposing (log)
 
 
 type alias Model =
@@ -67,7 +68,7 @@ startPosition =
 type alias UnitsPerSecond = Float
 
 speed : UnitsPerSecond
-speed = 7
+speed = 5
 
 type alias Shape =
   { position: Position
@@ -334,11 +335,18 @@ tryRotate : Rotation -> Model -> Model
 tryRotate rotation model =
   let
     rotated = setRotation rotation model
-    isOutOfBounds = List.any outOfBounds ( getLayout rotated.shape )
   in
-    if isOutOfBounds then
-      model
+    if shapeCollides rotated then
+      if okToMoveRight rotated then
+        log("ok to move right!")
+        updateShapeX 1 rotated
+      else if okToMoveLeft rotated then
+        log("ok to move left!")
+        updateShapeX -1 rotated
+      else
+        model
     else
+      log("in bounds")
       rotated
 
 outOfBounds : Position -> Bool
@@ -352,3 +360,29 @@ outOfBounds position =
   else
     False
 
+collides : PlacedShapes -> Position -> Bool
+collides placedShapes position =
+  if collidesPlaced position placedShapes || outOfBounds position then
+    True
+  else
+    False
+
+shapeCollides : Model -> Bool
+shapeCollides model =
+  model.shape
+    |> getLayout
+    |> List.any (collides model.placedShapes)
+
+okToMoveRight : Model -> Bool
+okToMoveRight model =
+  model
+    |> updateShapeX 1
+    |> shapeCollides
+    |> not
+
+okToMoveLeft : Model -> Bool
+okToMoveLeft model =
+  model
+    |> updateShapeX -1
+    |> shapeCollides
+    |> not
