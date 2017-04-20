@@ -87,7 +87,7 @@ type alias Game =
   }
 
 type alias PlacedPieces =
-  Array (Array Bool)
+  Array (Array (Maybe Color))
 
 type Rotation = Zero | Ninty | OneEighty | TwoSeventy
 
@@ -253,17 +253,23 @@ collidesRight placedPieces position =
     else
       False
 
-getPlacedVal : Int -> Int -> PlacedPieces -> Bool
+getPlacedVal : Int -> Int -> PlacedPieces -> Maybe Color
 getPlacedVal x y placedPieces =
   placedPieces
     |> Array.get x
-    |> Maybe.withDefault (False |> Array.repeat playArea.height)
+    |> Maybe.withDefault (Nothing |> Array.repeat playArea.height)
     |> Array.get y
-    |> Maybe.withDefault False
+    |> Maybe.withDefault Nothing
 
 collidesPlaced : Position -> PlacedPieces -> Bool
 collidesPlaced position placedPieces =
-  placedPieces |> getPlacedVal position.x position.y
+  let color = placedPieces |> getPlacedVal position.x position.y
+  in
+    case color of
+      Just color ->
+        True
+      Nothing ->
+        False
 
 newShape : Model -> Model
 newShape model =
@@ -282,10 +288,10 @@ addToPlacedPieces model =
 
 placePiece : ActivePiece -> PlacedPieces -> PlacedPieces
 placePiece activePiece placedPieces =
-  List.foldl (setPlaced True) placedPieces (mapPiece activePiece)
+  List.foldl (setPlaced activePiece.piece.color) placedPieces (mapPiece activePiece)
 
-setPlaced : Bool -> Position -> PlacedPieces -> PlacedPieces
-setPlaced isSet position placedPieces =
+setPlaced : Color -> Position -> PlacedPieces -> PlacedPieces
+setPlaced color position placedPieces =
   let
     column = Array.get position.x placedPieces
   in
@@ -293,7 +299,7 @@ setPlaced isSet position placedPieces =
       Nothing ->
         placedPieces
       Just column ->
-        Array.set position.x (Array.set position.y isSet column) placedPieces
+        Array.set position.x (Array.set position.y (Just color) column) placedPieces
 
 clearFullRows : Model -> Model
 clearFullRows model =
@@ -310,15 +316,15 @@ getCompletedRows placedPieces =
   let
     fullCol = Array.repeat playArea.height True
   in
-    Array.foldl (\col prevCol -> bothTrue col prevCol ) fullCol placedPieces
+    Array.foldl ( \col prevCol -> bothColored col prevCol ) fullCol placedPieces
 
-clearIfRowComplete : Array Bool -> Array Bool -> Array Bool
+clearIfRowComplete : Array Bool -> Array (Maybe Color) -> Array (Maybe Color)
 clearIfRowComplete completedRows col =
   col
-    |> Array.indexedMap (\y isSet -> (y, isSet))
-    |> Array.Extra.removeWhen (\(y, isSet) -> rowIsComplete y completedRows)
-    |> Array.map (\(_, isSet) -> isSet)
-    |> Array.Extra.resizerRepeat playArea.height False
+    |> Array.indexedMap (\y color -> (y, color))
+    |> Array.Extra.removeWhen (\(y, _) -> rowIsComplete y completedRows)
+    |> Array.map (\(_, color) -> color)
+    |> Array.Extra.resizerRepeat playArea.height Nothing
 
 rowIsComplete : Int -> Array Bool -> Bool
 rowIsComplete y completedRows =
@@ -326,9 +332,17 @@ rowIsComplete y completedRows =
     |> Array.get y
     |> Maybe.withDefault False
 
-bothTrue : Array Bool -> Array Bool -> Array Bool
-bothTrue array1 array2 =
-  Array.Extra.map2 (&&) array1 array2
+bothColored : Array (Maybe Color) -> Array Bool -> Array Bool
+bothColored array1 array2 =
+  Array.Extra.map2 ( \color isSet -> isSet && (isColored color) ) array1 array2
+
+isColored : Maybe Color -> Bool
+isColored color =
+  case color of
+    Just color ->
+      True
+    Nothing ->
+      False
 
 tryRotate : Rotation -> Model -> Model
 tryRotate rotation model =

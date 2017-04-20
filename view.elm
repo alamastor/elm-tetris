@@ -15,7 +15,6 @@ import Model exposing
   , toSvgPix
   , mapPiece
   )
-
 import Messages exposing (Msg)
 
 
@@ -36,24 +35,32 @@ layoutRect color position =
     ] []
 
 placedActivePiecesRects : PlacedPieces -> List(Svg Msg)
-placedActivePiecesRects placedActivePieces =
-  placedActivePieces
+placedActivePiecesRects placedPieces =
+  placedPieces
     |> Array.indexedMap getIndexPair
     |> Array.toList
     |> List.concat
-    |> List.map (\(xIdx, yIdx, isSet) -> (rect
+    |> List.map (\(xIdx, yIdx, color) -> (rect
       [ toSvgPix xIdx |> x
       , toSvgPix yIdx |> y
       , toSvgPix 1 |> width
       , toSvgPix 1 |> height
       , stroke "grey"
-      , (\isSet -> if isSet then "green" else "none") isSet |> fill
+      , colorOrNone color |> fill
       ] []))
 
-getIndexPair : Int -> Array Bool -> List (Int, Int, Bool)
+colorOrNone : Maybe Color -> String
+colorOrNone color =
+  case color of
+    Just color ->
+      color
+    Nothing ->
+      "none"
+
+getIndexPair : Int -> Array (Maybe Color) -> List (Int, Int, Maybe Color)
 getIndexPair xIdx array =
   array
-    |> Array.indexedMap (\yIdx isSet -> (xIdx, yIdx, isSet))
+    |> Array.indexedMap (\yIdx color -> (xIdx, yIdx, color))
     |> Array.toList
 
 view : Model -> Html Msg

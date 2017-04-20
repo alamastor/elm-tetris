@@ -47,7 +47,7 @@ init =
       , rotation = Zero
       }
     , placedPieces =
-      False
+      Nothing
         |> Array.repeat playArea.height
         |> Array.repeat playArea.width
     , game =
@@ -142,7 +142,9 @@ switchPaused : Model -> ( Model, Cmd Msg )
 switchPaused model =
   let game = model.game
   in
-    ( { model | game = { game | paused = not game.paused} }, Cmd.none )
+    ( { model | game = { game | paused = not game.paused} }
+    , Cmd.none
+    )
 
 -- SUBSCRIPTIONS
 
