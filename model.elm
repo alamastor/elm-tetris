@@ -8,6 +8,8 @@ module Model exposing
   , square
   , line
   , l
+  , triangle
+  , mirrorL
   , Color
   , playArea
   , startPosition
@@ -142,7 +144,7 @@ square =
     , ( 1, 1 )
     ]
   , rotates = False
-  , color = "Red"
+  , color = "#779ecb"
   }
 
 line : Piece
@@ -154,7 +156,7 @@ line =
     , ( 2, 0 )
     ]
   , rotates = True
-  , color = "Blue"
+  , color = "#966df6"
   }
 
 l : Piece
@@ -166,7 +168,31 @@ l =
     , ( 1, 1 )
     ]
   , rotates = True
-  , color = "Yellow"
+  , color = "#03c03c"
+  }
+
+triangle : Piece
+triangle =
+  { layout =
+    [ ( -1, 0 )
+    , ( 0, 0 )
+    , ( 1, 0 )
+    , ( 0, 1 )
+    ]
+  , rotates = True
+  , color = "#ff6961"
+  }
+
+mirrorL : Piece
+mirrorL =
+  { layout =
+    [ ( 0, 1 )
+    , ( 0, 0 )
+    , ( 0, -1 )
+    , ( -1, 1 )
+    ]
+  , rotates = True
+  , color = "#ffb347"
   }
 
 setRotation : Rotation -> Model -> Model
