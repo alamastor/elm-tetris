@@ -3,7 +3,7 @@ module Model exposing
   , Rotation(..)
   , PlacedPieces
   , Position
-  , Shape
+  , ActivePiece
   , Piece
   , square
   , line
@@ -14,7 +14,6 @@ module Model exposing
   , pixelsPerUnit
   , toSvgPix
   , mapPiece
-  , speed
   , tryRotate
   , updateTimeSinceMove
   , collidesLeft
@@ -25,6 +24,7 @@ module Model exposing
   , addToPlacedPieces
   , newShape
   , clearFullRows
+  , startSpeed
   )
 
 import Time exposing (Time)
@@ -33,8 +33,9 @@ import Array.Extra
 
 
 type alias Model =
-  { shape : Shape
+  { activePiece : ActivePiece
   , placedPieces: PlacedPieces
+  , game: Game
   }
 
 pixelsPerUnit : Int
@@ -70,13 +71,17 @@ startPosition =
 
 type alias UnitsPerSecond = Float
 
-speed : UnitsPerSecond
-speed = 5
+startSpeed : UnitsPerSecond
+startSpeed = 5
 
-type alias Shape =
+type alias ActivePiece =
   { position: Position
   , piece: Piece
   , rotation: Rotation
+  }
+
+type alias Game =
+  { speed: UnitsPerSecond
   , timeSinceMove: Time
   }
 
@@ -90,16 +95,16 @@ type alias Layout = List Position
 type alias LayoutSquare = ( LayoutOffset, LayoutOffset )
 type alias LayoutOffset = Int
 
-mapPiece : Shape -> Layout
-mapPiece shape =
-  if shape.piece.rotates then
-    shape.piece.layout
-      |> rotateLayout shape.rotation
-      |> List.map (\(x, y) -> (shape.position.x + x, shape.position.y + y ))
+mapPiece : ActivePiece -> Layout
+mapPiece activePiece =
+  if activePiece.piece.rotates then
+    activePiece.piece.layout
+      |> rotateLayout activePiece.rotation
+      |> List.map (\(x, y) -> (activePiece.position.x + x, activePiece.position.y + y ))
       |> coordTuplesToLayout
   else
-    shape.piece.layout
-      |> List.map (\(x, y) -> (shape.position.x + x, shape.position.y + y ))
+    activePiece.piece.layout
+      |> List.map (\(x, y) -> (activePiece.position.x + x, activePiece.position.y + y ))
       |> coordTuplesToLayout
 
 rotateLayout : Rotation -> List ( Int, Int ) -> List ( Int, Int )
@@ -166,21 +171,19 @@ l =
 setRotation : Rotation -> Model -> Model
 setRotation rotation model =
   { model
-    | shape =
-    { position = model.shape.position
-    , piece = model.shape.piece
+    | activePiece =
+    { position = model.activePiece.position
+    , piece = model.activePiece.piece
     , rotation = rotation
-    , timeSinceMove = model.shape.timeSinceMove
     }
   }
 
 updateShapeX : Int -> Model -> Model
 updateShapeX change model =
-  { model | shape =
-    { position = updatePositionX change model.shape.position
-    , piece = model.shape.piece
-    , rotation = model.shape.rotation
-    , timeSinceMove = model.shape.timeSinceMove
+  { model | activePiece =
+    { position = updatePositionX change model.activePiece.position
+    , piece = model.activePiece.piece
+    , rotation = model.activePiece.rotation
     }
   }
 
@@ -190,11 +193,10 @@ updatePositionX change position =
 
 updateShapeY : Int -> Model -> Model
 updateShapeY change model =
-  { model | shape =
-    { position = updatePositionY change model.shape.position
-    , piece = model.shape.piece
-    , rotation = model.shape.rotation
-    , timeSinceMove = model.shape.timeSinceMove
+  { model | activePiece =
+    { position = updatePositionY change model.activePiece.position
+    , piece = model.activePiece.piece
+    , rotation = model.activePiece.rotation
     }
   }
 
@@ -204,10 +206,8 @@ updatePositionY change position =
 
 updateTimeSinceMove : Time -> Model -> Model
 updateTimeSinceMove timeSinceMove model =
-  { model | shape =
-    { position = model.shape.position
-    , piece = model.shape.piece
-    , rotation = model.shape.rotation
+  { model | game =
+    { speed = model.game.speed
     , timeSinceMove = timeSinceMove
     }
   }
@@ -264,23 +264,22 @@ collidesPlaced position placedPieces =
 
 newShape : Model -> Model
 newShape model =
-  { model | shape =
+  { model | activePiece =
     { position = startPosition
-    , piece = model.shape.piece
-    , rotation = model.shape.rotation
-    , timeSinceMove = model.shape.timeSinceMove
+    , piece = model.activePiece.piece
+    , rotation = model.activePiece.rotation
     }
   }
 
 addToPlacedPieces : Model -> Model
 addToPlacedPieces model =
   { model
-    | placedPieces = placePiece model.shape model.placedPieces
+    | placedPieces = placePiece model.activePiece model.placedPieces
   }
 
-placePiece : Shape -> PlacedPieces -> PlacedPieces
-placePiece shape placedPieces =
-  List.foldl (setPlaced True) placedPieces (mapPiece shape)
+placePiece : ActivePiece -> PlacedPieces -> PlacedPieces
+placePiece activePiece placedPieces =
+  List.foldl (setPlaced True) placedPieces (mapPiece activePiece)
 
 setPlaced : Bool -> Position -> PlacedPieces -> PlacedPieces
 setPlaced isSet position placedPieces =
@@ -333,7 +332,7 @@ tryRotate rotation model =
   let
     rotated = setRotation rotation model
   in
-    if shapeCollides rotated then
+    if activePieceCollides rotated then
       if okToMoveRight rotated then
         updateShapeX 1 rotated
       else if okToMoveLeft rotated then
@@ -361,9 +360,9 @@ collides placedPieces position =
   else
     False
 
-shapeCollides : Model -> Bool
-shapeCollides model =
-  model.shape
+activePieceCollides : Model -> Bool
+activePieceCollides model =
+  model.activePiece
     |> mapPiece
     |> List.any (collides model.placedPieces)
 
@@ -371,12 +370,12 @@ okToMoveRight : Model -> Bool
 okToMoveRight model =
   model
     |> updateShapeX 1
-    |> shapeCollides
+    |> activePieceCollides
     |> not
 
 okToMoveLeft : Model -> Bool
 okToMoveLeft model =
   model
     |> updateShapeX -1
-    |> shapeCollides
+    |> activePieceCollides
     |> not

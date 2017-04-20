@@ -12,7 +12,6 @@ import Model exposing
   , square
   , startPosition
   , playArea
-  , speed
   , updateTimeSinceMove
   , tryRotate
   , collidesLeft
@@ -23,6 +22,7 @@ import Model exposing
   , updateShapeY
   , addToPlacedPieces
   , newShape
+  , startSpeed
   , clearFullRows
   )
 import Commands
@@ -41,16 +41,19 @@ main =
 
 init : ( Model, Cmd Msg )
 init =
-  ( { shape =
+  ( { activePiece =
       { position = startPosition
       , piece = square
       , rotation = Zero
-      , timeSinceMove = 0
       }
     , placedPieces =
       False
         |> Array.repeat playArea.height
         |> Array.repeat playArea.width
+    , game =
+      { speed = startSpeed
+      , timeSinceMove = 0
+      }
     }
   , Commands.randomShape
   )
@@ -64,11 +67,11 @@ update msg model =
     NoOp ->
       ( model, Cmd.none )
     FrameMsg diff ->
-      let timeSinceMove = model.shape.timeSinceMove + diff
+      let timeSinceMove = model.game.timeSinceMove + diff
       in
-        if Time.inSeconds timeSinceMove >= 1 / speed then
+        if Time.inSeconds timeSinceMove >= 1 / model.game.speed then
           model
-            |> updateTimeSinceMove (Time.inSeconds timeSinceMove - 1 / speed)
+            |> updateTimeSinceMove (Time.inSeconds timeSinceMove - 1 / model.game.speed)
             |> moveDown
         else
           ( model |> updateTimeSinceMove timeSinceMove, Cmd.none )
@@ -76,7 +79,7 @@ update msg model =
       if keyCode == 37 then
         moveLeft model
       else if keyCode == 38 then
-        rotateShape model
+        rotatePiece model
       else if keyCode == 39 then
         moveRight model
       else if keyCode == 40 then
@@ -84,17 +87,16 @@ update msg model =
       else
         ( model, Cmd.none )
     UpdatePiece piece ->
-      ( { model | shape =
-        { position = model.shape.position
+      ( { model | activePiece =
+        { position = model.activePiece.position
         , piece = piece
-        , rotation = model.shape.rotation
-        , timeSinceMove = model.shape.timeSinceMove
+        , rotation = model.activePiece.rotation
         }
       }, Cmd.none )
 
-rotateShape : Model -> ( Model, Cmd Msg )
-rotateShape model =
-  case model.shape.rotation of
+rotatePiece : Model -> ( Model, Cmd Msg )
+rotatePiece model =
+  case model.activePiece.rotation of
     Zero ->
       ( tryRotate Ninty model, Cmd.none )
     Ninty ->
@@ -106,21 +108,21 @@ rotateShape model =
 
 moveLeft : Model -> ( Model, Cmd Msg )
 moveLeft model =
-  if List.any ( collidesLeft model.placedPieces ) ( mapPiece model.shape ) then
+  if List.any ( collidesLeft model.placedPieces ) ( mapPiece model.activePiece ) then
     ( model, Cmd.none )
   else
     ( updateShapeX -1 model, Cmd.none )
 
 moveRight : Model -> ( Model, Cmd Msg )
 moveRight model =
-  if List.any ( collidesRight model.placedPieces ) ( mapPiece model.shape ) then
+  if List.any ( collidesRight model.placedPieces ) ( mapPiece model.activePiece ) then
     ( model, Cmd.none )
   else
     ( updateShapeX 1 model, Cmd.none )
 
 moveDown : Model -> ( Model, Cmd Msg )
 moveDown model =
-  if List.any ( collidesBelow model.placedPieces ) ( mapPiece model.shape ) then
+  if List.any ( collidesBelow model.placedPieces ) ( mapPiece model.activePiece ) then
     ( model
       |> addToPlacedPieces
       |> newShape

@@ -9,7 +9,7 @@ import Model exposing
   ( Model
   , Position
   , PlacedPieces
-  , Shape
+  , ActivePiece
   , Color
   , playArea
   , toSvgPix
@@ -19,7 +19,7 @@ import Model exposing
 import Messages exposing (Msg)
 
 
-shapeRects : Shape -> List (Svg Msg)
+shapeRects : ActivePiece -> List (Svg Msg)
 shapeRects shape =
   shape
     |> mapPiece
@@ -35,9 +35,9 @@ layoutRect color position =
     , fill color
     ] []
 
-placedShapesRects : PlacedPieces -> List(Svg Msg)
-placedShapesRects placedShapes =
-  placedShapes
+placedActivePiecesRects : PlacedPieces -> List(Svg Msg)
+placedActivePiecesRects placedActivePieces =
+  placedActivePieces
     |> Array.indexedMap getIndexPair
     |> Array.toList
     |> List.concat
@@ -61,7 +61,7 @@ view model =
   svg [ toSvgPix playArea.width |> width, toSvgPix playArea.height |> height ]
     ( List.concat
       [ [ rect [ toSvgPix playArea.width |> width, toSvgPix playArea.height |> height, fill "none" ] [] ]
-      , shapeRects model.shape
-      , ( placedShapesRects model.placedPieces )
+      , shapeRects model.activePiece
+      , ( placedActivePiecesRects model.placedPieces )
       ]
     )
