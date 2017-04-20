@@ -27,6 +27,7 @@ module Model exposing
   , newShape
   , clearFullRows
   , startSpeed
+  , updateSpeed
   )
 
 import Time exposing (Time)
@@ -74,7 +75,7 @@ startPosition =
 type alias UnitsPerSecond = Float
 
 startSpeed : UnitsPerSecond
-startSpeed = 5
+startSpeed = 2
 
 type alias ActivePiece =
   { position: Position
@@ -422,3 +423,9 @@ okToMoveLeft model =
     |> updateShapeX -1
     |> activePieceCollides
     |> not
+
+updateSpeed : Float -> Model -> Model
+updateSpeed change model =
+  let game = model.game
+  in
+    { model | game = { game | speed = game.speed + change }}

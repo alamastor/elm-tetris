@@ -24,6 +24,7 @@ import Model exposing
   , newShape
   , startSpeed
   , clearFullRows
+  , updateSpeed
   )
 import Commands
 
@@ -74,6 +75,7 @@ update msg model =
           if Time.inSeconds timeSinceMove >= 1 / model.game.speed then
             model
               |> updateTimeSinceMove (Time.inSeconds timeSinceMove - 1 / model.game.speed)
+              |> updateSpeed 0.005
               |> moveDown
           else
             ( model |> updateTimeSinceMove timeSinceMove, Cmd.none )
