@@ -83,6 +83,7 @@ type alias ActivePiece =
 type alias Game =
   { speed: UnitsPerSecond
   , timeSinceMove: Time
+  , paused: Bool
   }
 
 type alias PlacedPieces =
@@ -206,9 +207,11 @@ updatePositionY change position =
 
 updateTimeSinceMove : Time -> Model -> Model
 updateTimeSinceMove timeSinceMove model =
-  { model | game =
-    { speed = model.game.speed
-    , timeSinceMove = timeSinceMove
+  let game = model.game
+  in
+  { model
+    | game = { game
+      | timeSinceMove = timeSinceMove
     }
   }
 

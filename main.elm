@@ -53,6 +53,7 @@ init =
     , game =
       { speed = startSpeed
       , timeSinceMove = 0
+      , paused = False
       }
     }
   , Commands.randomShape
@@ -69,14 +70,19 @@ update msg model =
     FrameMsg diff ->
       let timeSinceMove = model.game.timeSinceMove + diff
       in
-        if Time.inSeconds timeSinceMove >= 1 / model.game.speed then
-          model
-            |> updateTimeSinceMove (Time.inSeconds timeSinceMove - 1 / model.game.speed)
-            |> moveDown
+        if not model.game.paused then
+          if Time.inSeconds timeSinceMove >= 1 / model.game.speed then
+            model
+              |> updateTimeSinceMove (Time.inSeconds timeSinceMove - 1 / model.game.speed)
+              |> moveDown
+          else
+            ( model |> updateTimeSinceMove timeSinceMove, Cmd.none )
         else
-          ( model |> updateTimeSinceMove timeSinceMove, Cmd.none )
+          ( model, Cmd.none )
     KeyMsg keyCode ->
-      if keyCode == 37 then
+      if keyCode == 32 then
+        switchPaused model
+      else if keyCode == 37 then
         moveLeft model
       else if keyCode == 38 then
         rotatePiece model
@@ -132,6 +138,11 @@ moveDown model =
   else
     ( updateShapeY 1 model, Cmd.none )
 
+switchPaused : Model -> ( Model, Cmd Msg )
+switchPaused model =
+  let game = model.game
+  in
+    ( { model | game = { game | paused = not game.paused} }, Cmd.none )
 
 -- SUBSCRIPTIONS
 
