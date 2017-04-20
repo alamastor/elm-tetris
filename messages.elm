@@ -9,4 +9,4 @@ type Msg
   = NoOp
   | FrameMsg Time
   | KeyMsg Keyboard.KeyCode
-  | UpdateLayout Model.ShapeName
+  | UpdatePiece Model.Piece

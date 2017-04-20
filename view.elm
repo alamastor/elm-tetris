@@ -5,24 +5,37 @@ import Svg exposing (Svg, svg, rect)
 import Svg.Attributes exposing (x, y, width, height, stroke, fill)
 import Array exposing (Array)
 
-import Model exposing (Model, playArea, toSvgPix, Shape, getLayout, Position, PlacedShapes)
+import Model exposing
+  ( Model
+  , Position
+  , PlacedPieces
+  , Shape
+  , Color
+  , playArea
+  , toSvgPix
+  , mapPiece
+  )
+
 import Messages exposing (Msg)
 
 
 shapeRects : Shape -> List (Svg Msg)
 shapeRects shape =
-  List.map layoutRect (getLayout shape)
+  shape
+    |> mapPiece
+    |> List.map (layoutRect shape.piece.color)
 
-layoutRect : Position -> Svg Msg
-layoutRect position =
+layoutRect : Color -> Position -> Svg Msg
+layoutRect color position =
   rect
     [ toSvgPix position.x |> Svg.Attributes.x
     , toSvgPix position.y |> Svg.Attributes.y
     , toSvgPix 1 |> width
     , toSvgPix 1 |> height
+    , fill color
     ] []
 
-placedShapesRects : PlacedShapes -> List(Svg Msg)
+placedShapesRects : PlacedPieces -> List(Svg Msg)
 placedShapesRects placedShapes =
   placedShapes
     |> Array.indexedMap getIndexPair
@@ -47,8 +60,8 @@ view : Model -> Html Msg
 view model =
   svg [ toSvgPix playArea.width |> width, toSvgPix playArea.height |> height ]
     ( List.concat
-      [ [ rect [ toSvgPix playArea.width |> width, toSvgPix playArea.height |> height, stroke "black", fill "none" ] [] ]
+      [ [ rect [ toSvgPix playArea.width |> width, toSvgPix playArea.height |> height, fill "none" ] [] ]
       , shapeRects model.shape
-      , ( placedShapesRects model.placedShapes )
+      , ( placedShapesRects model.placedPieces )
       ]
     )

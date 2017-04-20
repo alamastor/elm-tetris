@@ -1,15 +1,19 @@
 module Model exposing
   ( Model
-  , ShapeName(..)
   , Rotation(..)
-  , PlacedShapes
+  , PlacedPieces
   , Position
   , Shape
+  , Piece
+  , square
+  , line
+  , l
+  , Color
   , playArea
   , startPosition
   , pixelsPerUnit
   , toSvgPix
-  , getLayout
+  , mapPiece
   , speed
   , tryRotate
   , updateTimeSinceMove
@@ -18,7 +22,7 @@ module Model exposing
   , collidesBelow
   , updateShapeX
   , updateShapeY
-  , addToPlacedShapes
+  , addToPlacedPieces
   , newShape
   , clearFullRows
   )
@@ -26,12 +30,11 @@ module Model exposing
 import Time exposing (Time)
 import Array exposing (Array)
 import Array.Extra
-import Debug exposing (log)
 
 
 type alias Model =
   { shape : Shape
-  , placedShapes: PlacedShapes
+  , placedPieces: PlacedPieces
   }
 
 pixelsPerUnit : Int
@@ -72,15 +75,14 @@ speed = 5
 
 type alias Shape =
   { position: Position
-  , shapeName: ShapeName
+  , piece: Piece
   , rotation: Rotation
   , timeSinceMove: Time
   }
 
-type alias PlacedShapes =
+type alias PlacedPieces =
   Array (Array Bool)
 
-type ShapeName = Square | Line | L
 type Rotation = Zero | Ninty | OneEighty | TwoSeventy
 
 type alias Layout = List Position
@@ -88,25 +90,15 @@ type alias Layout = List Position
 type alias LayoutSquare = ( LayoutOffset, LayoutOffset )
 type alias LayoutOffset = Int
 
-getLayout : Shape -> Layout
-getLayout shape =
-  case shape.shapeName of
-    Square ->
-      mapLayout square shape
-    Line ->
-      mapLayout line shape
-    L ->
-      mapLayout l shape
-
-mapLayout : ShapeMap -> Shape -> Layout
-mapLayout shapeMap shape =
-  if shapeMap.rotates then
-    shapeMap.layout
+mapPiece : Shape -> Layout
+mapPiece shape =
+  if shape.piece.rotates then
+    shape.piece.layout
       |> rotateLayout shape.rotation
       |> List.map (\(x, y) -> (shape.position.x + x, shape.position.y + y ))
       |> coordTuplesToLayout
   else
-    shapeMap.layout
+    shape.piece.layout
       |> List.map (\(x, y) -> (shape.position.x + x, shape.position.y + y ))
       |> coordTuplesToLayout
 
@@ -127,13 +119,15 @@ coordTuplesToLayout coords =
   coords
     |> List.map (\(x, y) -> { x = x, y = y })
 
+type alias Color = String
 
-type alias ShapeMap =
+type alias Piece =
   { layout: List ( Int, Int )
   , rotates: Bool
+  , color: Color
   }
 
-square : ShapeMap
+square : Piece
 square =
   { layout =
     [ ( 0, 0 )
@@ -142,9 +136,10 @@ square =
     , ( 1, 1 )
     ]
   , rotates = False
+  , color = "Red"
   }
 
-line : ShapeMap
+line : Piece
 line =
   { layout =
     [ ( -1, 0 )
@@ -153,9 +148,10 @@ line =
     , ( 2, 0 )
     ]
   , rotates = True
+  , color = "Blue"
   }
 
-l : ShapeMap
+l : Piece
 l =
   { layout =
     [ ( 0, -1 )
@@ -164,6 +160,7 @@ l =
     , ( 1, 1 )
     ]
   , rotates = True
+  , color = "Yellow"
   }
 
 setRotation : Rotation -> Model -> Model
@@ -171,7 +168,7 @@ setRotation rotation model =
   { model
     | shape =
     { position = model.shape.position
-    , shapeName = model.shape.shapeName
+    , piece = model.shape.piece
     , rotation = rotation
     , timeSinceMove = model.shape.timeSinceMove
     }
@@ -181,7 +178,7 @@ updateShapeX : Int -> Model -> Model
 updateShapeX change model =
   { model | shape =
     { position = updatePositionX change model.shape.position
-    , shapeName = model.shape.shapeName
+    , piece = model.shape.piece
     , rotation = model.shape.rotation
     , timeSinceMove = model.shape.timeSinceMove
     }
@@ -195,7 +192,7 @@ updateShapeY : Int -> Model -> Model
 updateShapeY change model =
   { model | shape =
     { position = updatePositionY change model.shape.position
-    , shapeName = model.shape.shapeName
+    , piece = model.shape.piece
     , rotation = model.shape.rotation
     , timeSinceMove = model.shape.timeSinceMove
     }
@@ -209,109 +206,109 @@ updateTimeSinceMove : Time -> Model -> Model
 updateTimeSinceMove timeSinceMove model =
   { model | shape =
     { position = model.shape.position
-    , shapeName = model.shape.shapeName
+    , piece = model.shape.piece
     , rotation = model.shape.rotation
     , timeSinceMove = timeSinceMove
     }
   }
 
-collidesBelow : PlacedShapes -> Position -> Bool
-collidesBelow placedShapes position =
+collidesBelow : PlacedPieces -> Position -> Bool
+collidesBelow placedPieces position =
   let
     belowPosition =
       { position | y = position.y + 1 }
   in
     if belowPosition.y >= playArea.height then
       True
-    else if collidesPlaced belowPosition placedShapes then
+    else if collidesPlaced belowPosition placedPieces then
       True
     else
       False
 
-collidesLeft : PlacedShapes -> Position -> Bool
-collidesLeft placedShapes position =
+collidesLeft : PlacedPieces -> Position -> Bool
+collidesLeft placedPieces position =
   let
     leftPosition =
       { position | x = position.x - 1 }
   in
     if leftPosition.x < 0 then
       True
-    else if collidesPlaced leftPosition placedShapes then
+    else if collidesPlaced leftPosition placedPieces then
       True
     else
       False
 
-collidesRight : PlacedShapes -> Position -> Bool
-collidesRight placedShapes position =
+collidesRight : PlacedPieces -> Position -> Bool
+collidesRight placedPieces position =
   let
     rightPosition = { position | x = position.x + 1 }
   in
     if rightPosition.x >= playArea.width then
       True
-    else if collidesPlaced rightPosition placedShapes then
+    else if collidesPlaced rightPosition placedPieces then
       True
     else
       False
 
-getPlacedVal : Int -> Int -> PlacedShapes -> Bool
-getPlacedVal x y placedShapes =
-  placedShapes
+getPlacedVal : Int -> Int -> PlacedPieces -> Bool
+getPlacedVal x y placedPieces =
+  placedPieces
     |> Array.get x
     |> Maybe.withDefault (False |> Array.repeat playArea.height)
     |> Array.get y
     |> Maybe.withDefault False
 
-collidesPlaced : Position -> PlacedShapes -> Bool
-collidesPlaced position placedShapes =
-  placedShapes |> getPlacedVal position.x position.y
+collidesPlaced : Position -> PlacedPieces -> Bool
+collidesPlaced position placedPieces =
+  placedPieces |> getPlacedVal position.x position.y
 
 newShape : Model -> Model
 newShape model =
   { model | shape =
     { position = startPosition
-    , shapeName = model.shape.shapeName
+    , piece = model.shape.piece
     , rotation = model.shape.rotation
     , timeSinceMove = model.shape.timeSinceMove
     }
   }
 
-addToPlacedShapes : Model -> Model
-addToPlacedShapes model =
+addToPlacedPieces : Model -> Model
+addToPlacedPieces model =
   { model
-    | placedShapes = placeLayout model.shape model.placedShapes
+    | placedPieces = placePiece model.shape model.placedPieces
   }
 
-placeLayout : Shape -> PlacedShapes -> PlacedShapes
-placeLayout shape placedShapes =
-  List.foldl (setPlaced True) placedShapes (getLayout shape)
+placePiece : Shape -> PlacedPieces -> PlacedPieces
+placePiece shape placedPieces =
+  List.foldl (setPlaced True) placedPieces (mapPiece shape)
 
-setPlaced : Bool -> Position -> PlacedShapes -> PlacedShapes
-setPlaced isSet position placedShapes =
+setPlaced : Bool -> Position -> PlacedPieces -> PlacedPieces
+setPlaced isSet position placedPieces =
   let
-    column = Array.get position.x placedShapes
+    column = Array.get position.x placedPieces
   in
     case column of
       Nothing ->
-        placedShapes
+        placedPieces
       Just column ->
-        Array.set position.x (Array.set position.y isSet column) placedShapes
+        Array.set position.x (Array.set position.y isSet column) placedPieces
 
 clearFullRows : Model -> Model
 clearFullRows model =
   let
-    placedShapes = model.placedShapes
-    completedRows = getCompletedRows placedShapes
+    placedPieces = model.placedPieces
+    completedRows = getCompletedRows placedPieces
   in
     { model
-      | placedShapes = Array.map (\col -> clearIfRowComplete completedRows col) placedShapes
+      | placedPieces = Array.map (\col -> clearIfRowComplete completedRows col) placedPieces
     }
 
-getCompletedRows : PlacedShapes -> Array Bool
-getCompletedRows placedShapes =
+getCompletedRows : PlacedPieces -> Array Bool
+getCompletedRows placedPieces =
   let
     fullCol = Array.repeat playArea.height True
   in
-    Array.foldl (\col prevCol -> bothTrue col prevCol ) fullCol placedShapes
+    Array.foldl (\col prevCol -> bothTrue col prevCol ) fullCol placedPieces
 
 clearIfRowComplete : Array Bool -> Array Bool -> Array Bool
 clearIfRowComplete completedRows col =
@@ -338,15 +335,12 @@ tryRotate rotation model =
   in
     if shapeCollides rotated then
       if okToMoveRight rotated then
-        log("ok to move right!")
         updateShapeX 1 rotated
       else if okToMoveLeft rotated then
-        log("ok to move left!")
         updateShapeX -1 rotated
       else
         model
     else
-      log("in bounds")
       rotated
 
 outOfBounds : Position -> Bool
@@ -360,9 +354,9 @@ outOfBounds position =
   else
     False
 
-collides : PlacedShapes -> Position -> Bool
-collides placedShapes position =
-  if collidesPlaced position placedShapes || outOfBounds position then
+collides : PlacedPieces -> Position -> Bool
+collides placedPieces position =
+  if collidesPlaced position placedPieces || outOfBounds position then
     True
   else
     False
@@ -370,8 +364,8 @@ collides placedShapes position =
 shapeCollides : Model -> Bool
 shapeCollides model =
   model.shape
-    |> getLayout
-    |> List.any (collides model.placedShapes)
+    |> mapPiece
+    |> List.any (collides model.placedPieces)
 
 okToMoveRight : Model -> Bool
 okToMoveRight model =

@@ -5,11 +5,11 @@ import Array exposing (Array)
 import Html exposing (program)
 
 import View exposing (view)
-import Messages exposing (Msg(NoOp, FrameMsg, KeyMsg, UpdateLayout))
+import Messages exposing (Msg(NoOp, FrameMsg, KeyMsg, UpdatePiece))
 import Model exposing
   ( Model
-  , ShapeName(Square)
   , Rotation(Zero, Ninty, OneEighty, TwoSeventy)
+  , square
   , startPosition
   , playArea
   , speed
@@ -18,10 +18,10 @@ import Model exposing
   , collidesLeft
   , collidesRight
   , collidesBelow
-  , getLayout
+  , mapPiece
   , updateShapeX
   , updateShapeY
-  , addToPlacedShapes
+  , addToPlacedPieces
   , newShape
   , clearFullRows
   )
@@ -43,11 +43,11 @@ init : ( Model, Cmd Msg )
 init =
   ( { shape =
       { position = startPosition
-      , shapeName = Square
+      , piece = square
       , rotation = Zero
       , timeSinceMove = 0
       }
-    , placedShapes =
+    , placedPieces =
       False
         |> Array.repeat playArea.height
         |> Array.repeat playArea.width
@@ -83,10 +83,10 @@ update msg model =
         moveDown model
       else
         ( model, Cmd.none )
-    UpdateLayout shapeName ->
+    UpdatePiece piece ->
       ( { model | shape =
         { position = model.shape.position
-        , shapeName = shapeName
+        , piece = piece
         , rotation = model.shape.rotation
         , timeSinceMove = model.shape.timeSinceMove
         }
@@ -106,23 +106,23 @@ rotateShape model =
 
 moveLeft : Model -> ( Model, Cmd Msg )
 moveLeft model =
-  if List.any ( collidesLeft model.placedShapes ) ( getLayout model.shape ) then
+  if List.any ( collidesLeft model.placedPieces ) ( mapPiece model.shape ) then
     ( model, Cmd.none )
   else
     ( updateShapeX -1 model, Cmd.none )
 
 moveRight : Model -> ( Model, Cmd Msg )
 moveRight model =
-  if List.any ( collidesRight model.placedShapes ) ( getLayout model.shape ) then
+  if List.any ( collidesRight model.placedPieces ) ( mapPiece model.shape ) then
     ( model, Cmd.none )
   else
     ( updateShapeX 1 model, Cmd.none )
 
 moveDown : Model -> ( Model, Cmd Msg )
 moveDown model =
-  if List.any ( collidesBelow model.placedShapes ) ( getLayout model.shape ) then
+  if List.any ( collidesBelow model.placedPieces ) ( mapPiece model.shape ) then
     ( model
-      |> addToPlacedShapes
+      |> addToPlacedPieces
       |> newShape
       |> clearFullRows
     , Commands.randomShape
