@@ -1,6 +1,7 @@
 module View exposing(view)
 
-import Html exposing (program, Html)
+import Html exposing (program, Html, div)
+import Html.Attributes exposing (style)
 import Svg exposing (Svg, svg, rect)
 import Svg.Attributes exposing (x, y, width, height, stroke, fill)
 import Array exposing (Array)
@@ -45,7 +46,6 @@ placedActivePiecesRects placedPieces =
       , toSvgPix yIdx |> y
       , toSvgPix 1 |> width
       , toSvgPix 1 |> height
-      , stroke "grey"
       , colorOrNone color |> fill
       ] []))
 
@@ -65,10 +65,14 @@ getIndexPair xIdx array =
 
 view : Model -> Html Msg
 view model =
-  svg [ toSvgPix playArea.width |> width, toSvgPix playArea.height |> height ]
-    ( List.concat
-      [ [ rect [ toSvgPix playArea.width |> width, toSvgPix playArea.height |> height, fill "none" ] [] ]
-      , shapeRects model.activePiece
-      , ( placedActivePiecesRects model.placedPieces )
-      ]
-    )
+  div [ style [ ("width", "100%") ]]
+  [ div [style [ ("margin", "0 auto"), ("width", (toSvgPix playArea.width) ++ "px" ) ]]
+    [ svg [ toSvgPix playArea.width |> width, toSvgPix playArea.height |> height ]
+        ( List.concat
+          [ [ rect [ toSvgPix playArea.width |> width, toSvgPix playArea.height |> height, fill "bisque" ] [] ]
+          , shapeRects model.activePiece
+          , ( placedActivePiecesRects model.placedPieces )
+          ]
+        )
+    ]
+  ]
