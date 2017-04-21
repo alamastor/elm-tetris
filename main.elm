@@ -5,7 +5,7 @@ import Array exposing (Array)
 import Html exposing (program)
 
 import View exposing (view)
-import Messages exposing (Msg(NoOp, FrameMsg, KeyMsg, UpdatePiece))
+import Messages exposing (Msg(NoOp, FrameMsg, KeyMsg, UpdateBothPieces, UpdateNextPiece))
 import Model exposing
   ( Model
   , Rotation(Zero, Ninty, OneEighty, TwoSeventy)
@@ -47,6 +47,7 @@ init =
       , piece = square
       , rotation = Zero
       }
+    , nextPiece = square
     , placedPieces =
       Nothing
         |> Array.repeat playArea.height
@@ -57,7 +58,7 @@ init =
       , paused = False
       }
     }
-  , Commands.randomShape
+  , Commands.randomPiecePair
   )
 
 
@@ -94,13 +95,14 @@ update msg model =
         moveDown model
       else
         ( model, Cmd.none )
-    UpdatePiece piece ->
-      ( { model | activePiece =
-        { position = model.activePiece.position
-        , piece = piece
-        , rotation = model.activePiece.rotation
-        }
-      }, Cmd.none )
+    UpdateNextPiece piece ->
+      ( { model | nextPiece = piece } , Cmd.none )
+    UpdateBothPieces (piece, nextPiece) ->
+      let activePiece = model.activePiece
+      in
+        ( { model | activePiece = { activePiece | piece = piece }}
+        , Cmd.none
+        )
 
 rotatePiece : Model -> ( Model, Cmd Msg )
 rotatePiece model =
@@ -135,7 +137,7 @@ moveDown model =
       |> addToPlacedPieces
       |> newShape
       |> clearFullRows
-    , Commands.randomShape
+    , Commands.randomNextPiece
     )
   else
     ( updateShapeY 1 model, Cmd.none )

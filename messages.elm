@@ -10,4 +10,5 @@ type Msg
   = NoOp
   | FrameMsg Time
   | KeyMsg Keyboard.KeyCode
-  | UpdatePiece Model.Piece
+  | UpdateBothPieces (Model.Piece, Model.Piece)
+  | UpdateNextPiece Model.Piece

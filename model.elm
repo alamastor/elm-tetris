@@ -5,6 +5,7 @@ module Model exposing
   , Position
   , ActivePiece
   , Piece
+  , Unit
   , square
   , line
   , l
@@ -14,7 +15,6 @@ module Model exposing
   , playArea
   , startPosition
   , pixelsPerUnit
-  , toSvgPix
   , mapPiece
   , tryRotate
   , updateTimeSinceMove
@@ -37,6 +37,7 @@ import Array.Extra
 
 type alias Model =
   { activePiece : ActivePiece
+  , nextPiece: Piece
   , placedPieces: PlacedPieces
   , game: Game
   }
@@ -45,10 +46,6 @@ pixelsPerUnit : Int
 pixelsPerUnit = 30
 
 type alias Unit = Int
-
-toSvgPix : Unit -> String
-toSvgPix units =
-  units * pixelsPerUnit |> toString
 
 type alias Rectangle =
   { width: Unit
@@ -302,7 +299,7 @@ newShape : Model -> Model
 newShape model =
   { model | activePiece =
     { position = startPosition
-    , piece = model.activePiece.piece
+    , piece = model.nextPiece
     , rotation = model.activePiece.rotation
     }
   }

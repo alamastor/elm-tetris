@@ -11,29 +11,60 @@ import Model exposing
   , Position
   , PlacedPieces
   , ActivePiece
+  , Unit
+  , Piece
+  , pixelsPerUnit
   , Color
   , playArea
-  , toSvgPix
   , mapPiece
   )
 import Messages exposing (Msg)
 
 
-shapeRects : ActivePiece -> List (Svg Msg)
-shapeRects shape =
-  shape
+toSvgUnits : Unit -> String
+toSvgUnits units =
+  units * pixelsPerUnit |> toString
+
+toPx : Unit -> String
+toPx units =
+  toString (units * pixelsPerUnit) ++ "px"
+
+activePieceRects : ActivePiece -> List (Svg Msg)
+activePieceRects activePiece =
+  activePiece
     |> mapPiece
-    |> List.map (layoutRect shape.piece.color)
+    |> List.map (layoutRect activePiece.piece.color)
+
+nextPieceRects : Piece -> List (Svg Msg)
+nextPieceRects piece =
+  piece.layout
+    |> List.map (layoutPieceRect piece.color (pieceMins piece))
 
 layoutRect : Color -> Position -> Svg Msg
 layoutRect color position =
   rect
-    [ toSvgPix position.x |> Svg.Attributes.x
-    , toSvgPix position.y |> Svg.Attributes.y
-    , toSvgPix 1 |> width
-    , toSvgPix 1 |> height
+    [ toSvgUnits position.x |> Svg.Attributes.x
+    , toSvgUnits position.y |> Svg.Attributes.y
+    , toSvgUnits 1 |> width
+    , toSvgUnits 1 |> height
     , fill color
     ] []
+
+layoutPieceRect : Color -> (Int, Int) -> (Int, Int) -> Svg Msg
+layoutPieceRect color (minX, minY) (x, y) =
+  rect
+    [ toSvgUnits (x - minX) |> Svg.Attributes.x
+    , toSvgUnits (y - minY) |> Svg.Attributes.y
+    , toSvgUnits 1 |> width
+    , toSvgUnits 1 |> height
+    , fill color
+    ] []
+
+pieceMins : Piece -> (Unit, Unit)
+pieceMins piece =
+  piece.layout
+    |> List.foldl (\(x, y) (minX, minY)  -> (min x minX, min y minY)) (99999, 9999)
+
 
 placedActivePiecesRects : PlacedPieces -> List(Svg Msg)
 placedActivePiecesRects placedPieces =
@@ -42,10 +73,10 @@ placedActivePiecesRects placedPieces =
     |> Array.toList
     |> List.concat
     |> List.map (\(xIdx, yIdx, color) -> (rect
-      [ toSvgPix xIdx |> x
-      , toSvgPix yIdx |> y
-      , toSvgPix 1 |> width
-      , toSvgPix 1 |> height
+      [ toSvgUnits xIdx |> x
+      , toSvgUnits yIdx |> y
+      , toSvgUnits 1 |> width
+      , toSvgUnits 1 |> height
       , colorOrNone color |> fill
       ] []))
 
@@ -65,14 +96,17 @@ getIndexPair xIdx array =
 
 view : Model -> Html Msg
 view model =
-  div [ style [ ("width", "100%") ]]
-  [ div [style [ ("margin", "0 auto"), ("width", (toSvgPix playArea.width) ++ "px" ) ]]
-    [ svg [ toSvgPix playArea.width |> width, toSvgPix playArea.height |> height ]
+  div [ style [ ("width", "100%"), ("display", "flex") ]]
+  [ div [style [ ("width", "calc((100% - " ++ toPx playArea.width ++ ") / 2)") ] ] []
+  , div [style [ ("width", (toSvgUnits playArea.width) ++ "px" ) ]]
+    [ svg [ toSvgUnits playArea.width |> width, toSvgUnits playArea.height |> height ]
         ( List.concat
-          [ [ rect [ toSvgPix playArea.width |> width, toSvgPix playArea.height |> height, fill "bisque" ] [] ]
-          , shapeRects model.activePiece
+          [ [ rect [ toSvgUnits playArea.width |> width, toSvgUnits playArea.height |> height, fill "bisque" ] [] ]
+          , activePieceRects model.activePiece
           , ( placedActivePiecesRects model.placedPieces )
           ]
         )
     ]
+  , div [style [ ("width", "calc((100% - " ++ toPx playArea.width ++ ") / 2)") ] ]
+    [ svg [ toSvgUnits 4 |> width ] (nextPieceRects model.nextPiece) ]
   ]

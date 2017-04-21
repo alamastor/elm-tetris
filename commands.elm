@@ -1,13 +1,21 @@
-module Commands exposing (randomShape)
+module Commands exposing (randomNextPiece, randomPiecePair)
 
 import Random
 import Random.Extra
 
-import Messages exposing (Msg(UpdatePiece))
+import Messages exposing (Msg(UpdateBothPieces, UpdateNextPiece))
 import Model exposing (square, line, l, triangle, mirrorL)
 
-randomShape : Cmd Msg
-randomShape =
+randomNextPiece : Cmd Msg
+randomNextPiece =
   Random.Extra.sample [square, line, l, triangle, mirrorL]
     |> Random.map (Maybe.withDefault square)
-    |> Random.generate UpdatePiece
+    |> Random.generate UpdateNextPiece
+
+randomPiecePair : Cmd Msg
+randomPiecePair =
+  let randomPiece = Random.Extra.sample [square, line, l, triangle, mirrorL]
+    |> Random.map (Maybe.withDefault square)
+  in
+    Random.pair randomPiece randomPiece
+      |> Random.generate UpdateBothPieces
