@@ -132,8 +132,14 @@ view model =
     , div [ style [ ("display", "flex"), ("justify-content", "center") ] ]
       [ svg
         [ (pieceSize model.nextPiece).width |> toSvgUnits |> width
-        , (pieceSize model.nextPiece).height |> toSvgUnits |> height
+        , 3 |> toSvgUnits |> height
         ] (nextPieceRects model.nextPiece)
       ]
+    , div [ style
+      [ ("font-family", "sans-serif")
+      , ("margin", "1rem 0")
+      , ("text-align", "center")
+      ]
+    ] [ text ("Score: " ++ (toString model.game.score)) ]
     ]
   ]

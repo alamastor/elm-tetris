@@ -82,6 +82,7 @@ type alias Game =
   { speed: UnitsPerSecond
   , timeSinceMove: Time
   , gameState: GameState
+  , score: Int
   }
 
 type GameState = Active | Paused | GameOver
@@ -345,6 +346,7 @@ clearFullRows model =
     { model
       | placedPieces = Array.map (\col -> clearIfRowComplete completedRows col) placedPieces
     }
+      |> updateScore (model.game.score + (completedRowCount completedRows))
 
 getCompletedRows : PlacedPieces -> Array Bool
 getCompletedRows placedPieces =
@@ -352,6 +354,10 @@ getCompletedRows placedPieces =
     fullCol = Array.repeat playArea.height True
   in
     Array.foldl ( \col prevCol -> bothColored col prevCol ) fullCol placedPieces
+
+completedRowCount : Array Bool -> Int
+completedRowCount completedRows =
+  Array.foldl (\completed count -> if completed then count + 1 else count) 0 completedRows
 
 clearIfRowComplete : Array Bool -> Array (Maybe Color) -> Array (Maybe Color)
 clearIfRowComplete completedRows col =
@@ -467,3 +473,9 @@ updateGameState gameState model =
   let game = model.game
   in
     { model | game = { game | gameState = gameState } }
+
+updateScore : Int -> Model -> Model
+updateScore newScore model =
+  let game = model.game
+  in
+    { model | game = { game | score = newScore } }

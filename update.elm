@@ -94,6 +94,7 @@ init =
       { speed = startSpeed
       , timeSinceMove = 0
       , gameState = Active
+      , score = 0
       }
     }
   , Commands.randomPiecePair
