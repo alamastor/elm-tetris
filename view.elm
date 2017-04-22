@@ -13,6 +13,7 @@ import Model exposing
   , ActivePiece
   , Unit
   , Piece
+  , GameState (Paused, Active, GameOver)
   , pixelsPerUnit
   , Color
   , playArea
@@ -86,10 +87,12 @@ colorOrNone color =
 
 statusText : Model -> String
 statusText model =
-  case model.game.paused of
-    True ->
+  case model.game.gameState of
+    Paused ->
       "Paused"
-    False ->
+    GameOver ->
+      "Game Over"
+    _ ->
       ""
 
 getIndexPair : Int -> Array (Maybe Color) -> List (Int, Int, Maybe Color)

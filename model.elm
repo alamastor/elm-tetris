@@ -6,6 +6,7 @@ module Model exposing
   , ActivePiece
   , Piece
   , Unit
+  , GameState(Active, Paused, GameOver)
   , square
   , line
   , l
@@ -13,7 +14,6 @@ module Model exposing
   , mirrorL
   , Color
   , playArea
-  , startPosition
   , pixelsPerUnit
   , mapPiece
   , tryRotate
@@ -24,12 +24,14 @@ module Model exposing
   , updateShapeX
   , updateShapeY
   , addToPlacedPieces
-  , newShape
+  , newPiece
   , clearFullRows
   , startSpeed
   , updateSpeed
   , pieceMins
+  , pieceMaxes
   , pieceSize
+  , checkGameOver
   )
 
 import Time exposing (Time)
@@ -65,12 +67,6 @@ type alias Position =
   , y: Unit
   }
 
-startPosition : Position
-startPosition =
-  { x = 6
-  , y = 0
-  }
-
 type alias UnitsPerSecond = Float
 
 startSpeed : UnitsPerSecond
@@ -85,8 +81,10 @@ type alias ActivePiece =
 type alias Game =
   { speed: UnitsPerSecond
   , timeSinceMove: Time
-  , paused: Bool
+  , gameState: GameState
   }
+
+type GameState = Active | Paused | GameOver
 
 type alias PlacedPieces =
   Array (Array (Maybe Color))
@@ -297,12 +295,15 @@ collidesPlaced position placedPieces =
       Nothing ->
         False
 
-newShape : Model -> Model
-newShape model =
+newPiece : Model -> Model
+newPiece model =
   { model | activePiece =
-    { position = startPosition
+    { position =
+      { x = round ((toFloat playArea.width) / 2) - 1
+      , y = (\(_, maxY) -> -maxY) (pieceMaxes model.nextPiece) - 1
+      }
     , piece = model.nextPiece
-    , rotation = model.activePiece.rotation
+    , rotation = Zero
     }
   }
 
@@ -326,6 +327,14 @@ setPlaced color position placedPieces =
         placedPieces
       Just column ->
         Array.set position.x (Array.set position.y (Just color) column) placedPieces
+
+checkGameOver : Model -> Model
+checkGameOver model =
+  if List.any outOfBoundsTop (mapPiece model.activePiece) then
+    Debug.log("out of bounds top")
+    updateGameState GameOver model
+  else
+    model
 
 clearFullRows : Model -> Model
 clearFullRows model =
@@ -396,6 +405,10 @@ outOfBounds position =
   else
     False
 
+outOfBoundsTop : Position -> Bool
+outOfBoundsTop position =
+  position.y < 0
+
 collides : PlacedPieces -> Position -> Bool
 collides placedPieces position =
   if collidesPlaced position placedPieces || outOfBounds position then
@@ -448,3 +461,9 @@ pieceSize piece =
     { width = 1 + maxX - minX
     , height = 1 + maxY - minY
     }
+
+updateGameState : GameState -> Model -> Model
+updateGameState gameState model =
+  let game = model.game
+  in
+    { model | game = { game | gameState = gameState } }
