@@ -1,9 +1,9 @@
 module View exposing(view)
 
-import Html exposing (program, Html, div)
+import Html exposing (program, Html, div, text)
 import Html.Attributes exposing (style)
-import Svg exposing (Svg, svg, rect)
-import Svg.Attributes exposing (x, y, width, height, stroke, fill)
+import Svg exposing (Svg, svg, rect, text_)
+import Svg.Attributes exposing (x, y, width, height, stroke, fill, textAnchor, fontFamily, fontSize)
 import Array exposing (Array)
 
 import Model exposing
@@ -17,6 +17,8 @@ import Model exposing
   , Color
   , playArea
   , mapPiece
+  , pieceMins
+  , pieceSize
   )
 import Messages exposing (Msg)
 
@@ -60,12 +62,6 @@ layoutPieceRect color (minX, minY) (x, y) =
     , fill color
     ] []
 
-pieceMins : Piece -> (Unit, Unit)
-pieceMins piece =
-  piece.layout
-    |> List.foldl (\(x, y) (minX, minY)  -> (min x minX, min y minY)) (99999, 9999)
-
-
 placedActivePiecesRects : PlacedPieces -> List(Svg Msg)
 placedActivePiecesRects placedPieces =
   placedPieces
@@ -88,6 +84,14 @@ colorOrNone color =
     Nothing ->
       "none"
 
+statusText : Model -> String
+statusText model =
+  case model.game.paused of
+    True ->
+      "Paused"
+    False ->
+      ""
+
 getIndexPair : Int -> Array (Maybe Color) -> List (Int, Int, Maybe Color)
 getIndexPair xIdx array =
   array
@@ -104,9 +108,29 @@ view model =
           [ [ rect [ toSvgUnits playArea.width |> width, toSvgUnits playArea.height |> height, fill "bisque" ] [] ]
           , activePieceRects model.activePiece
           , ( placedActivePiecesRects model.placedPieces )
+          , [ text_
+              [ toSvgUnits playArea.width |> width
+              , toString (toFloat (pixelsPerUnit * playArea.width) / 2) |> x
+              , y "100"
+              , textAnchor "middle"
+              , fontFamily "sans-serif"
+              , fontSize "2em"
+              ] [ statusText model |> Svg.text  ] ]
           ]
         )
     ]
-  , div [style [ ("width", "calc((100% - " ++ toPx playArea.width ++ ") / 2)") ] ]
-    [ svg [ toSvgUnits 4 |> width ] (nextPieceRects model.nextPiece) ]
+  , div [ style [ ("width", "calc((100% - " ++ toPx playArea.width ++ ") / 2)") ] ]
+    [ div [ style
+      [ ("font-family", "sans-serif")
+      , ("margin", "1rem 0")
+      , ("text-align", "center")
+      ]
+    ] [ text "Next Piece" ]
+    , div [ style [ ("display", "flex"), ("justify-content", "center") ] ]
+      [ svg
+        [ (pieceSize model.nextPiece).width |> toSvgUnits |> width
+        , (pieceSize model.nextPiece).height |> toSvgUnits |> height
+        ] (nextPieceRects model.nextPiece)
+      ]
+    ]
   ]

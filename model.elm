@@ -28,6 +28,8 @@ module Model exposing
   , clearFullRows
   , startSpeed
   , updateSpeed
+  , pieceMins
+  , pieceSize
   )
 
 import Time exposing (Time)
@@ -426,3 +428,23 @@ updateSpeed change model =
   let game = model.game
   in
     { model | game = { game | speed = game.speed + change }}
+
+pieceMins : Piece -> (Unit, Unit)
+pieceMins piece =
+  piece.layout
+    |> List.foldl (\(x, y) (minX, minY)  -> (min x minX, min y minY)) (9999999, 9999999)
+
+pieceMaxes : Piece -> (Unit, Unit)
+pieceMaxes piece =
+  piece.layout
+    |> List.foldl (\(x, y) (maxX, maxY)  -> (max x maxX, max y maxY)) (-9999999, -9999999)
+
+pieceSize : Piece -> Rectangle
+pieceSize piece =
+  let
+    (minX, minY) = pieceMins piece
+    (maxX, maxY) = pieceMaxes piece
+  in
+    { width = 1 + maxX - minX
+    , height = 1 + maxY - minY
+    }
