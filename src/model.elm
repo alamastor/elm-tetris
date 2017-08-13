@@ -38,6 +38,7 @@ module Model
 import Time exposing (Time)
 import Array exposing (Array)
 import Array.Extra
+import Auth exposing (User)
 
 
 type alias Model =
@@ -45,6 +46,7 @@ type alias Model =
     , nextPiece : Piece
     , placedPieces : PlacedPieces
     , game : Game
+    , user : Maybe User
     }
 
 

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Elm Tetris</title>
+</head>
+
+<body></body>
+<script src="https://www.gstatic.com/firebasejs/4.2.0/firebase.js"></script>
+<script src="./main.js"></script>
+<script>
+  var app = Elm.Main.fullscreen();
+
+  // Initialize Firebase
+  var config = {
+    apiKey: "AIzaSyBitFnZM0UXEMR4Mc9mmfJrKD_9b4SbcsQ",
+    authDomain: "elm-tetris.firebaseapp.com",
+    databaseURL: "https://elm-tetris.firebaseio.com",
+    projectId: "elm-tetris",
+    storageBucket: "elm-tetris.appspot.com",
+    messagingSenderId: "565389132237"
+  };
+  firebase.initializeApp(config);
+
+  app.ports.signIn.subscribe(function () {
+    var provider = new firebase.auth.GoogleAuthProvider();
+    firebase.auth().signInWithPopup(provider).then(function (result) {
+      // This gives you a Google Access Token. You can use it to access the Google API.
+      var token = result.credential.accessToken;
+      // The signed-in user info.
+      var user = result.user;
+      // ...
+    }).catch(function (error) {
+      // Handle Errors here.
+      var errorCode = error.code;
+      var errorMessage = error.message;
+      // The email of the user's account used.
+      var email = error.email;
+      // The firebase.auth.AuthCredential type that was used.
+      var credential = error.credential;
+      // ...
+    });
+  })
+
+  firebase.auth().onAuthStateChanged(function (user) {
+    var elmUser;
+    if (user) {
+      elmUser = {
+        name: user.displayName,
+      };
+    } else {
+      elmUser = null;
+    }
+    app.ports.authStateChanged.send(elmUser);
+  })
+
+  app.ports.signOut.subscribe(function () {
+    firebase.auth().signOut().then(function () {
+      // Sign-out successfu
+    }).catch(function () {
+      // Sign-out error.
+    })
+  })
+
+</script>
+
+</html>
