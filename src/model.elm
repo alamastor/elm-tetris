@@ -47,6 +47,7 @@ type alias Model =
     , placedPieces : PlacedPieces
     , game : Game
     , user : Maybe User
+    , error : Maybe String
     }
 
 

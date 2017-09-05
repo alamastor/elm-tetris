@@ -44,15 +44,16 @@
   })
 
   firebase.auth().onAuthStateChanged(function (user) {
-    var elmUser;
     if (user) {
-      elmUser = {
-        name: user.displayName,
-      };
+      user.getIdToken().then(function (token) {
+        app.ports.authStateChanged.send({
+          name: user.displayName,
+          token: token,
+        });
+      });
     } else {
-      elmUser = null;
+      app.ports.authStateChanged.send(null);
     }
-    app.ports.authStateChanged.send(elmUser);
   })
 
   app.ports.signOut.subscribe(function () {

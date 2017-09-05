@@ -4,6 +4,7 @@ import Time exposing (Time)
 import Keyboard
 import Model
 import Auth exposing (User)
+import Http
 
 
 type Msg
@@ -15,3 +16,5 @@ type Msg
     | SignIn
     | SignOut
     | AuthStateChanged (Maybe User)
+    | SendScore Int
+    | SentScore (Result Http.Error ())

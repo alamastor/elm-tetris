@@ -12,6 +12,7 @@ port signIn : () -> Cmd msg
 
 type alias User =
     { name : String
+    , token : String
     }
 
 

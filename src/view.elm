@@ -136,6 +136,8 @@ leftMargin : Model -> Html Msg
 leftMargin model =
     div [ style [ ( "width", "calc((100% - " ++ toPx playArea.width ++ ") / 2)" ) ] ]
         [ signinSection model.user
+        , error model.error
+        , button [ onClick (SendScore 10) ] [ text "Send Score" ]
         ]
 
 
@@ -150,6 +152,16 @@ signinSection user =
                 [ text ("Signed in as " ++ user.name)
                 , div [] [ button [ onClick SignOut ] [ text "Sign Out" ] ]
                 ]
+
+
+error : Maybe String -> Html Msg
+error errorMsg =
+    case errorMsg of
+        Nothing ->
+            div [] []
+
+        Just errorMsg ->
+            div [] [ text errorMsg ]
 
 
 playAreaView : Model -> Html Msg

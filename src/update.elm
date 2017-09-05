@@ -28,6 +28,8 @@ import Model
 import Messages exposing (Msg(..))
 import Commands
 import Auth
+import Api
+import Http
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -100,6 +102,34 @@ update msg model =
         AuthStateChanged user ->
             ( { model | user = user }, Cmd.none )
 
+        SendScore score ->
+            case model.user of
+                Just user ->
+                    ( model, Api.sendScore 10 user )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        SentScore (Ok ()) ->
+            ( model, Cmd.none )
+
+        SentScore (Err err) ->
+            case err of
+                Http.BadUrl url ->
+                    ( { model | error = Just ("Invalid URL: " ++ url ++ ".") }, Cmd.none )
+
+                Http.Timeout ->
+                    ( { model | error = Just "HTTP request timed out." }, Cmd.none )
+
+                Http.NetworkError ->
+                    ( { model | error = Just "Network error." }, Cmd.none )
+
+                Http.BadStatus response ->
+                    ( { model | error = Just ("Request error: " ++ response.status.message ++ ".") }, Cmd.none )
+
+                Http.BadPayload error response ->
+                    ( { model | error = Just ("Decode error: " ++ error ++ ".") }, Cmd.none )
+
 
 init : ( Model, Cmd Msg )
 init =
@@ -123,6 +153,7 @@ init =
             , score = 0
             }
       , user = Nothing
+      , error = Nothing
       }
     , Commands.randomPiecePair
     )
@@ -163,15 +194,36 @@ moveRight model =
 moveDown : Model -> ( Model, Cmd Msg )
 moveDown model =
     if List.any (collidesBelow model.placedPieces) (mapPiece model.activePiece) then
-        ( model
-            |> addToPlacedPieces
-            |> clearFullRows
-            |> checkGameOver
-            |> newPiece
-        , Commands.randomNextPiece
-        )
+        collidedBelow model
     else
         ( updateShapeY 1 model, Cmd.none )
+
+
+collidedBelow : Model -> ( Model, Cmd Msg )
+collidedBelow model =
+    let
+        newModel =
+            model
+                |> addToPlacedPieces
+                |> clearFullRows
+                |> checkGameOver
+                |> newPiece
+    in
+        if newModel.game.gameState == GameOver then
+            case model.user of
+                Just user ->
+                    ( newModel
+                    , Api.sendScore model.game.score user
+                    )
+
+                Nothing ->
+                    ( newModel
+                    , Commands.randomNextPiece
+                    )
+        else
+            ( newModel
+            , Commands.randomNextPiece
+            )
 
 
 switchPaused : Model -> ( Model, Cmd Msg )
